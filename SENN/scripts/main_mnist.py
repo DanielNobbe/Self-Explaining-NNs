@@ -48,7 +48,7 @@ from SENN.utils import plot_theta_stability, generate_dir_names, noise_stability
 from SENN.eval_utils import estimate_dataset_lipschitz
 
 from robust_interpret.explainers import gsenn_wrapper
-from robust_interpret.utils import lipschitz_boxplot, lipschitz_argmax_plot
+from robust_interpret.utils import lipschitz_boxplot, lipschitz_argmax_plot, lipschitz_feature_argmax_plot
 
 
 def revert_to_raw(t):
@@ -224,7 +224,7 @@ def main():
 
 
     ### 2. Single example lipschitz estimate with Black Box
-    do_bb_stability_example = True # Aangepast: was False
+    do_bb_stability_example = False # Aangepast: was False
     if do_bb_stability_example:
         print('**** Performing lipschitz estimation for a single point ****')
 
@@ -288,6 +288,8 @@ def main():
     pickle.dump(All_Results, open(results_path + '_combined_metrics.pkl', "wb")) # Aangepast: .pkl was .format(dataname)
 
     
+
+
     # args.epoch_stats = epoch_stats
     # save_path = args.results_path
     # print("Save train/dev results to", save_path)

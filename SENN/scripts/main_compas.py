@@ -197,7 +197,7 @@ def main():
     pred_argmax = model(Variable(argmax.view(1,-1), volatile = True)).data
     att_argmax = model.thetas.data.squeeze().numpy().squeeze()
 
-    pdb.set_trace()
+    # pdb.set_trace()
     results['x_max']      = x
     results['x_argmax']      = argmax
     results['test_discrete_glip']      = lips
@@ -211,6 +211,7 @@ def main():
 
     pickle.dump(results,  open(fpath+'.pkl',"wb")) # FOrmerly model_metrics
 
+    print(ppath)
     lipschitz_feature_argmax_plot(x, argmax, att_x, att_argmax,
                                   feat_names = feat_names,
                                   digits=2, figsize=(5,6), widths=(2,3),

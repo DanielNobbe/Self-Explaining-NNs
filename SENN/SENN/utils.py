@@ -36,7 +36,7 @@ def generate_dir_names(dataset, args, make = True):
         suffix = '{}_H{}_Th{}_Reg{:0.0e}_LR{}'.format(
                     args.theta_reg_type,
                     args.h_type,
-                    1, # aangepast: was args.theta_arch,
+                    'simple', # aangepast: was args.theta_arch,
                     args.theta_reg_lambda,
                     args.lr,
                     )
@@ -44,7 +44,7 @@ def generate_dir_names(dataset, args, make = True):
         suffix = '{}_H{}_Th{}_Cpts{}_Reg{:0.0e}_Sp{}_LR{}'.format(
                     args.theta_reg_type,
                     args.h_type,
-                    1, # aangepast, was: args.theta_arch,
+                    'simple', # aangepast, was: args.theta_arch,
                     args.nconcepts,
                     args.theta_reg_lambda,
                     args.h_sparsity,
@@ -752,8 +752,9 @@ def noise_stability_plots(model, dataset, cuda, save_path):
             examples[dataset[i][1]] = dataset[i][0].view(1,1,28,28)
         i += 1
 
-    for i in range(10):
-        x = Variable(examples[i], volatile = True)
+    for key in examples.keys():
+        print(examples[key])
+        x = Variable(examples[key], volatile = True)
         if cuda:
             x = x.cuda()
         plot_theta_stability(model, x, noise_level = 0.5,
