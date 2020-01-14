@@ -378,6 +378,7 @@ class ClassificationTrainer():
         batch_size = target.size(0)
         _, pred = output.topk(maxk, 1, True, True)
         pred = pred.t()
+        target = target.type(torch.LongTensor)
         correct = pred.eq(target.view(1, -1).expand_as(pred))
         res = []
         for k in topk:
@@ -565,13 +566,21 @@ class GradPenaltyTrainer(ClassificationTrainer):
         # Init
         self.optimizer.zero_grad()
         #self.model.zero_grad()
+        inputs = inputs.type(torch.FloatTensor)  #AANGEPAST
+        inputs = inputs.reshape(128,1,28,28)
 
         inputs.requires_grad = True
+        # print('size of the input trainers ', inputs.shape)
 
         # Predict
         pred = self.model(inputs)
 
         # Calculate loss
+        # print('pred', pred.shape)
+        # print('targets', targets.shape)
+        # print(type(targets))
+        targets = targets.type(torch.LongTensor)
+        # print(type(targets))
         pred_loss       = self.prediction_criterion(pred, targets)
         all_losses = {'prediction': pred_loss.data[0]}
         if self.learning_h:
