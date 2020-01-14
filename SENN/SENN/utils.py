@@ -753,7 +753,6 @@ def noise_stability_plots(model, dataset, cuda, save_path):
         i += 1
 
     for key in examples.keys():
-        print(examples[key])
         x = Variable(examples[key], volatile = True)
         if cuda:
             x = x.cuda()
