@@ -15,6 +15,9 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program. If not, see <https://www.gnu.org/licenses/>.
 """
+# Ignore Future Warnings (Joosje)
+import warnings
+warnings.simplefilter(action='ignore', category=(FutureWarning, UserWarning))
 
 # Standard Imports
 import sys, os
