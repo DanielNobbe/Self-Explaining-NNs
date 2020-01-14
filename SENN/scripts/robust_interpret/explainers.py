@@ -724,7 +724,7 @@ class gsenn_wrapper(explainer_wrapper):
         self.verbose = verbose
 
 
-    def __call__(self, x, y=None, return_dict=True, x_raw=None, show_plot=False): # Aangepast: return_dict=False
+    def __call__(self, x, y=None, return_dict=False, x_raw=None, show_plot=False): # Aangepast: return_dict=False
         """
             x_raw: if provided, will plot this instead of x (useful for images that have been processed)
 
@@ -801,10 +801,8 @@ class gsenn_wrapper(explainer_wrapper):
         self.explanation = attributions
         vals = attributions.reshape(attributions.shape[0], -1)
 
-        print("return dict", return_dict)
         if not return_dict:
             return vals
         else:
-            print("Returning exp_dict")
             exp_dict = dict(zip(self.feature_names, vals))
             return exp_dict
