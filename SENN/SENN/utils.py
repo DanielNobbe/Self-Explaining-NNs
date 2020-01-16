@@ -630,7 +630,21 @@ def concept_grid(model, data_loader, cuda=False, top_k = 6, layout = 'vertical',
     top_idxs = top_idxs.squeeze().t()
     top_examples = {}
     for i in range(num_concepts):
-        top_examples[i] = data_loader.dataset.test_data[top_idxs[i]]
+        if hasattr(data_loader.dataset, 'test_data'): #for MNIST dataset
+            top_examples[i] = data_loader.dataset.test_data[top_idxs[i]]
+        else: #for EMNIST dataset
+            top_for_concepti = np.empty((28, 28), int)
+            for d in range(len(top_idxs[i])):
+                if len(top_for_concepti.shape) == len(data_loader.dataset.__getitem__(top_idxs[i][d].item())[0].shape):
+                    top_for_concepti = np.stack(
+                        (top_for_concepti, data_loader.dataset.__getitem__(top_idxs[i][d].item())[0]))
+                else:
+                    top_for_concepti = np.concatenate(
+                        (top_for_concepti, [data_loader.dataset.__getitem__(top_idxs[i][d].item())[0]]), axis=0)
+
+            top_for_concepti = np.delete(top_for_concepti, 0, 0)
+            top_examples[i] = torch.from_numpy(top_for_concepti)
+
     #top_examples =
 
 

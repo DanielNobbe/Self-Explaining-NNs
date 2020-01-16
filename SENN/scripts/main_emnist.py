@@ -37,7 +37,6 @@ from emnist import list_datasets
 from emnist import extract_training_samples
 from emnist import extract_test_samples
 EMNIST = list_datasets()
-
 class Dataset(data.Dataset):
   'Characterizes a dataset for PyTorch'
   def __init__(self, list_IDs, labels):
