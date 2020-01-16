@@ -295,16 +295,16 @@ def main():
 
     ### Consistency analysis
 
-    for i, (inputs, targets) in enumerate(test_loader):
-            # get the inputs
-            if model.cuda:
-                inputs, targets = inputs.cuda(), targets.cuda()
-            input_var = torch.autograd.Variable(inputs, volatile=True)
+    # for i, (inputs, targets) in enumerate(test_loader):
+    #         # get the inputs
+    #         if model.cuda:
+    #             inputs, targets = inputs.cuda(), targets.cuda()
+    #         input_var = torch.autograd.Variable(inputs, volatile=True)
             
-            save_path = results_path + '/faithfulness' + str(i) + '/'
-            if not os.path.isdir(save_path):
-                os.mkdir(save_path)
-            corrs = expl.compute_dataset_consistency(input_var, inputs_are_concepts = False, save_path = save_path)
+    #         save_path = results_path + '/faithfulness' + str(i) + '/'
+    #         if not os.path.isdir(save_path):
+    #             os.mkdir(save_path)
+    #         corrs = expl.compute_dataset_consistency(input_var, inputs_are_concepts = False, save_path = save_path)
             
 
 
