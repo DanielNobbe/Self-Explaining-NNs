@@ -769,7 +769,7 @@ class gsenn_wrapper(explainer_wrapper):
             # Will compute attribution w.r.t. predicted class
             vals, argmaxs = torch.max(pred.data, -1)
             #pdb.set_trace()
-            attributions = attrib_mat.gather(2,argmaxs.view(-1,1).unsqueeze(2).repeat(1,natt,nclass))[:,:,0].numpy()
+            attributions = attrib_mat.gather(2,argmaxs.cpu().view(-1,1).unsqueeze(2).repeat(1,natt,nclass))[:,:,0].numpy()
             #attributions = attrib_mat[:,:,argmaxs].squeeze(-1).numpy()
             #attributions = attributions.reshape()
         else:
