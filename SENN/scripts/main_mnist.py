@@ -314,10 +314,11 @@ def main():
         y = next(iter(test_tds))[0].numpy()
         x_raw = (test_tds.test_data[0].float()/255).numpy()
         y_raw = revert_to_raw(x)
-        att_x = expl(x, show_plot = True) # Edited: show_plot was False
-        att_y = expl(y, show_plot = True) # Edited: show_plot was False
+        att_x = expl(x, show_plot = False)
+        att_y = expl(y, show_plot = False)
         lip = 1
-        lipschitz_argmax_plot(x_raw, y_raw, att_x,att_y, lip, save_path=fpath) # Edited: originally save_path commented
+        lipschitz_argmax_plot(x_raw, y_raw, att_x,att_y, lip)#, save_path=fpath)
+
         #pdb.set_trace()
 
 
@@ -347,9 +348,9 @@ def main():
         #pdb.set_trace()
         Results['lip_argmax'] = (x, argmax, lip)
         # .reshape(inputs.shape[0], inputs.shape[1], -1)
-        att = expl(x, None, show_plot=True)#.squeeze()
+        att = expl(x, None, show_plot=False)#.squeeze()
         # .reshape(inputs.shape[0], inputs.shape[1], -1)
-        att_argmax = expl(argmax, None, show_plot=True)#.squeeze()
+        att_argmax = expl(argmax, None, show_plot=False)#.squeeze()
 
         #pdb.set_trace()
         Argmax_dict = {'lip': lip, 'argmax': argmax, 'x': x}
@@ -364,7 +365,7 @@ def main():
     noise_stability_plots(model, test_tds, cuda = args.cuda, save_path = results_path)
     
     ### 3. Local lipschitz estimate over multiple samples with Black BOx Optim
-    do_bb_stability = True
+    do_bb_stability = False # Aangepast, was: True
     if do_bb_stability:
         print('**** Performing black-box lipschitz estimation over subset of dataset ****')
         maxpoints = 20
@@ -388,11 +389,11 @@ def main():
     
 
 
-    args.epoch_stats = epoch_stats
-    save_path = args.results_path
-    print("Save train/dev results to", save_path)
-    args_dict = vars(args)
-    pickle.dump(args_dict, open(save_path,'wb') )
+    # args.epoch_stats = epoch_stats
+    # save_path = args.results_path
+    # print("Save train/dev results to", save_path)
+    # args_dict = vars(args)
+    # pickle.dump(args_dict, open(save_path,'wb') )
 
 if __name__ == '__main__':
     main()
