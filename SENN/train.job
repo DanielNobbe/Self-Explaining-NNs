@@ -9,7 +9,9 @@
 #SBATCH --partition=gpu_shared_course
 #SBATCH --gres=gpu:1
 
-
+module load 2019
+module load Miniconda2
+conda activate FACT
 
 srun python scripts/main_mnist.py --cuda --train
 
