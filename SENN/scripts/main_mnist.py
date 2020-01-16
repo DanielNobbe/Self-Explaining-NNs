@@ -38,6 +38,8 @@ from torchvision import transforms
 from torchvision.datasets import MNIST
 from torch.utils.data.sampler import SubsetRandomSampler
 import torch.utils.data.dataloader as dataloader
+from tqdm import tqdm
+
 
 # Local imports
 from SENN.arglist import get_senn_parser #parse_args as parse_senn_args
@@ -47,7 +49,7 @@ from SENN.conceptizers import image_fcc_conceptizer, image_cnn_conceptizer, inpu
 from SENN.parametrizers import image_parametrizer
 from SENN.aggregators import linear_scalar_aggregator, additive_scalar_aggregator
 from SENN.trainers import HLearningClassTrainer, VanillaClassTrainer, GradPenaltyTrainer
-from SENN.utils import plot_theta_stability, generate_dir_names, noise_stability_plots, concept_grid
+from SENN.utils import plot_theta_stability, generate_dir_names, noise_stability_plots, concept_grid, plot_prob_drop
 from SENN.eval_utils import estimate_dataset_lipschitz
 
 from robust_interpret.explainers import gsenn_wrapper
@@ -90,6 +92,84 @@ def load_mnist_data(valid_size=0.1, shuffle=True, random_seed=2008, batch_size =
     test_loader = dataloader.DataLoader(test, **dataloader_args)
 
     return train_loader, valid_loader, test_loader, train, test
+
+class new_wrapper(gsenn_wrapper):
+
+    def compute_dataset_consistency(self,  dataset, reference_value = 0, inputs_are_concepts = True, save_path = None):
+        """
+            does compute_prob_drop for all dataset, returns stats and plots
+        """
+        drops = []
+        atts  = []
+        corrs = []
+        i = 0
+        print("shape of x:", dataset.shape)
+        for x in dataset:
+            if save_path:
+                path = save_path + '_' + str(i)
+            else:
+                path = save_path
+            i += 1
+            p_d, att = self.compute_prob_drop(x, inputs_are_concepts = inputs_are_concepts, save_path = path)
+            p_d = p_d.squeeze()
+            att = att.squeeze()
+            drops.append(p_d)
+            atts.append(att)
+            #pdb.set_trace()
+            #assert len(p_d).shape[0] == atts.shape[0], "Attributions has wrong size"
+            #pdb.set_trace()
+
+            # print("attributions: ", atts)
+            corrs.append(np.corrcoef(p_d, att)[0,1]) # Compute correlation per sample, then aggreate
+
+        corrs = np.array(corrs)
+        # pdb.set_trace()
+        # drops = np.stack(drops)
+        # atts  = np.stack(atts)
+        #
+        # np.corrcoef(drops.flatten(), atts.flatten())
+        return corrs
+
+    def compute_prob_drop(self, x, reference_value = 0, plot = False, save_path = None, inputs_are_concepts = True):
+        """
+            This is placed here to prevent having to update the robust_interpret package. 
+        """
+        print("x size in compute prob drop: ", x.size())
+        # First, turn inputs into concepts
+        if not inputs_are_concepts:
+            # x = x.type(torch.FloatTensor)
+            x = x.unsqueeze(dim = 0)
+            h_x = self.net.forward(x, h_options = -1)
+            # print("h_x: ",h_x)
+            f = self.net.forward(x, h_x = h_x, h_options = 1)
+        # Then, use concepts to forward pass through the model
+        # if inputs_are_concepts:
+        else:
+            f   = self.net.forward(x.reshape(1,-1)) # model is compute_proba function, not neural model - we need to add output layer to compute probabilities. Not necessary for now TODO
+        # So for now, we use self.net
+        # else:
+        #     f = self.model.forward(x.reshape(1,-1), h_x = h_x,  h_options = 1)
+        pred_class = f.argmax()
+        attributions = self(x) # attributions are theta values (i think)
+        deltas = []
+        for i in tqdm(range(h_x.shape[1])):
+            x_p = x.clone()
+            # x_p[i] = reference_value # uncomment this to be compatible with uci dataset
+            h_x_p = h_x.clone()
+            h_x_p[:,i, :] = reference_value
+            if inputs_are_concepts:
+                f_p = self.net(x_p.reshape(1,-1))
+            else:
+                f_p = self.net.forward(x, h_x = h_x_p,  h_options = 1)
+            # print("outcome: ", f_p, f)
+            delta_i = (f - f_p)[0,pred_class]
+            # print("delta_i: ", delta_i)
+            deltas.append(delta_i.cpu().detach().numpy())
+        prob_drops = np.array(deltas)
+        plot = True
+        if plot:
+            plot_prob_drop(attributions[0], prob_drops, save_path = save_path) # remove [0] after attributions for uci
+        return prob_drops, attributions
 
 def parse_args():
     senn_parser = get_senn_parser()
@@ -184,12 +264,15 @@ def main():
 
     All_Results = {}
 
+    
+
+
     ### 1. Single point lipshiz estimate via black box optim
     # All methods tested with BB optim for fair comparison)
     features = None
     classes = [str(i) for i in range(10)]
     model.eval()
-    expl = gsenn_wrapper(model,
+    expl = new_wrapper(model,
                         mode      = 'classification',
                         input_type = 'image',
                         multiclass=True,
@@ -198,7 +281,6 @@ def main():
                         train_data      = train_loader,
                         skip_bias = True,
                         verbose = False)
-
 
 
 
@@ -212,6 +294,22 @@ def main():
     # x_raw = test_loader.dataset.test_data[:args.batch_size,:,:]
     # attr = expl(x, x_raw = x_raw, show_plot = True)
     # #pdb.set_trace()
+    
+
+    ### Consistency analysis
+
+    # for i, (inputs, targets) in enumerate(test_loader):
+    #         # get the inputs
+    #         if model.cuda:
+    #             inputs, targets = inputs.cuda(), targets.cuda()
+    #         input_var = torch.autograd.Variable(inputs, volatile=True)
+            
+    #         save_path = results_path + '/faithfulness' + str(i) + '/'
+    #         if not os.path.isdir(save_path):
+    #             os.mkdir(save_path)
+    #         corrs = expl.compute_dataset_consistency(input_var, inputs_are_concepts = False, save_path = save_path)
+            
+
 
     # #### Debug argmax plot_theta_stability
     if args.h_type == 'input':
@@ -223,6 +321,7 @@ def main():
         att_y = expl(y, show_plot = False)
         lip = 1
         lipschitz_argmax_plot(x_raw, y_raw, att_x,att_y, lip)# save_path=fpath)
+
         #pdb.set_trace()
 
 
