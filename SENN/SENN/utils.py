@@ -717,7 +717,7 @@ def plot_prob_drop(attribs, prob_drop, save_path = None):
     width = 0.65
 
     fig, ax1 = plt.subplots(figsize=(8,4))
-    
+
     color1 = '#377eb8'
     ax1.bar(ind+width+0.35, attribs, 0.45, color=color1)
     ax1.set_ylabel(r'Feature Relevance $\theta(x)_i$',color=color1, fontsize = 14)
@@ -738,7 +738,6 @@ def plot_prob_drop(attribs, prob_drop, save_path = None):
     ax1.set_xticklabels(column_names)
 
     fig.tight_layout()
-    save_path = 'out/faithfulness'
     if save_path:
         plt.savefig(save_path, bbox_inches = 'tight', format='pdf', dpi=300)
 

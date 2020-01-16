@@ -92,16 +92,22 @@ def load_mnist_data(valid_size=0.1, shuffle=True, random_seed=2008, batch_size =
 
 class new_wrapper(gsenn_wrapper):
 
-    def compute_dataset_consistency(self,  dataset, reference_value = 0, inputs_are_concepts = True):
+    def compute_dataset_consistency(self,  dataset, reference_value = 0, inputs_are_concepts = True, save_path = None):
         """
             does compute_prob_drop for all dataset, returns stats and plots
         """
         drops = []
         atts  = []
         corrs = []
+        i = 0
+        print("shape of x:", dataset.shape)
         for x in dataset:
-
-            p_d, att = self.compute_prob_drop(x, inputs_are_concepts = inputs_are_concepts)
+            if save_path:
+                path = save_path + '_' + str(i)
+            else:
+                path = save_path
+            i += 1
+            p_d, att = self.compute_prob_drop(x, inputs_are_concepts = inputs_are_concepts, save_path = path)
             p_d = p_d.squeeze()
             att = att.squeeze()
             drops.append(p_d)
@@ -289,14 +295,16 @@ def main():
 
     ### Consistency analysis
 
-
     for i, (inputs, targets) in enumerate(test_loader):
-            print("i: ", i)
             # get the inputs
             if model.cuda:
                 inputs, targets = inputs.cuda(), targets.cuda()
             input_var = torch.autograd.Variable(inputs, volatile=True)
-            corrs = expl.compute_dataset_consistency(input_var, inputs_are_concepts = False)
+            
+            save_path = results_path + '/faithfulness' + str(i) + '/'
+            if not os.path.isdir(save_path):
+                os.mkdir(save_path)
+            corrs = expl.compute_dataset_consistency(input_var, inputs_are_concepts = False, save_path = save_path)
             
 
 
