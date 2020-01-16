@@ -218,7 +218,6 @@ class GSENN(nn.Module):
         #h_x         = self.encoder(x.view(x.size(0), -1)).view(-1, self.natoms, self.dout)
         #self.recons = self.decoder(h_x.view(-1, self.dout*self.natoms))
         if self.learning_H and h_options != 1:
-            print("x before going into conceptizer: ", x.size())
             h_x, x_tilde = self.conceptizer(x)
             self.recons = x_tilde
             # if self.sparsity:
@@ -255,10 +254,8 @@ class GSENN(nn.Module):
             # Concepts are two-dimensional, so flatten
             h_x = h_x.view(h_x.size(0), h_x.size(1), -1)
 
-        #print(h_x.shape, thetas.shape)
         out = self.aggregator(h_x, thetas)
-        print("h_x in model:", h_x)
-        # print("thetas: ", thetas)
+
 
         # if self.aggregator.nclasses ==  1:
         #     out = out.squeeze() # Squeeze out single class dimension

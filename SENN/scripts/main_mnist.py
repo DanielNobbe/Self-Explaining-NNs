@@ -195,7 +195,6 @@ def main():
                         train_data      = train_loader,
                         skip_bias = True,
                         verbose = False)
-    print("after init of gsenn wrapper")
 
 
 
@@ -212,8 +211,7 @@ def main():
     
 
     ### Consistency analysis
-    # con = test_loader.dataset.test_data[1:127, :, :].unsqueeze(dim = 1).type(torch.FloatTensor).to(torch.device('cuda')) # Need to input a test image here # TODO: change to dynamically choose device
-    # print("data: ",con.shape)
+
 
     for i, (inputs, targets) in enumerate(test_loader):
             print("i: ", i)
@@ -223,11 +221,7 @@ def main():
             input_var = torch.autograd.Variable(inputs, volatile=True)
             corrs = expl.compute_dataset_consistency(input_var, inputs_are_concepts = False)
             
-            if i > 1:
-                break
 
-    # corrs = expl.compute_dataset_consistency(con, inputs_are_concepts = False)
-    # print(corrs)
 
     # # #### Debug argmax plot_theta_stability
     # if args.h_type == 'input':

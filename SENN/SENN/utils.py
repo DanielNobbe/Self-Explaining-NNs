@@ -107,7 +107,6 @@ def animate_training(Steps, Cs, X_train, y_train):
     line, = ax.plot([],[], '-')
     line2, = ax.plot([],[],'--')
     ax.set_xlim(np.min(xx), np.max(xx))
-    ax.set_xlim(np.min(yy), np.max(yy))
     ax.scatter(X_train[:, 0], X_train[:, 1], c=y_train, cmap=cm_bright,
        edgecolors='k')
     #ax.contourf(xx, yy, Cs[0].reshape(xx.shape))
@@ -717,7 +716,6 @@ def plot_prob_drop(attribs, prob_drop, save_path = None):
     width = 0.65
 
     fig, ax1 = plt.subplots(figsize=(8,4))
-    # print("attribs: ", attribs[0])
     color1 = '#377eb8'
     ax1.bar(ind+width+0.35, attribs, 0.45, color=color1)
     ax1.set_ylabel(r'Feature Relevance $\theta(x)_i$',color=color1, fontsize = 14)
