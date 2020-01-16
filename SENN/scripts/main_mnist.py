@@ -317,7 +317,7 @@ def main():
         att_x = expl(x, show_plot = False)
         att_y = expl(y, show_plot = False)
         lip = 1
-        lipschitz_argmax_plot(x_raw, y_raw, att_x,att_y, lip)#, save_path=fpath)
+        lipschitz_argmax_plot(x_raw, y_raw, att_x,att_y, lip)# save_path=fpath)
 
         #pdb.set_trace()
 
