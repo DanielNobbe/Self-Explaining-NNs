@@ -54,6 +54,10 @@ from SENN.eval_utils import estimate_dataset_lipschitz
 from robust_interpret.explainers import gsenn_wrapper
 from robust_interpret.utils import lipschitz_boxplot, lipschitz_argmax_plot, lipschitz_feature_argmax_plot
 
+from random import sample
+from tqdm import tqdm
+from collections import defaultdict
+
 
 def load_mnist_data(valid_size=0.1, shuffle=True, random_seed=2008, batch_size = 64,
                     num_workers = 1):
@@ -196,10 +200,54 @@ def main():
                         verbose = False)
 
     # Make noise stability plots, (Figure 4 paper)
-    noise_stability_plots(model, test_tds, cuda = args.cuda, save_path = results_path)
+    print("Results_path", results_path)
+    # noise_stability_plots(model, test_tds, cuda = args.cuda, save_path = results_path)
 
+    # One sample
+    # plt.imshow(test_tds[1][0].reshape(28,28))
+    # plt.show()
 
+    print(test_tds)
 
+    distances = defaultdict(list)
+
+    print(distances)
+
+    scale = 0.5
+
+    print(distances)
+
+    for i in tqdm(range(1000)):
+
+	    x = Variable(test_tds[i][0].view(1,1,28,28), volatile = True)
+
+	    true_class = test_tds[i][1][0].item()
+
+	    pred = model(x)
+
+	    theta = model.thetas.data.cpu().numpy().squeeze()
+
+	    klass = pred.data.max(1)[1]
+	    deps = theta[:,klass].squeeze()
+
+	    # print("prediction", klass)
+	    # print("dependencies", deps)
+
+	    # Add noise to sample and repeat
+	    noise = Variable(scale*torch.randn(x.size()), volatile = True)
+
+	    pred = model(noise)
+
+	    theta = model.thetas.data.cpu().numpy().squeeze()
+
+	    klass_noise = pred.data.max(1)[1]
+	    deps_noise = theta[:,klass].squeeze()
+
+	    dist = np.linalg.norm(deps - deps_noise)
+
+	    distances[true_class].append(dist)
+
+    print(distances)
 
 if __name__ == '__main__':
 	main()
