@@ -15,5 +15,5 @@ conda activate FACT
 
 pip install ./
 
-srun python scripts/main_mnist.py --cuda --train
+srun python scripts/main_emnist.py --cuda --train
 
