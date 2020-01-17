@@ -67,8 +67,8 @@ def load_emnist_data(valid_size=0.1, shuffle=True, random_seed=2008, batch_size 
     # images_test, labels_test = extract_test_samples('letters')
     images_train, labels_train = extract_training_samples('balanced')
     images_test, labels_test = extract_test_samples('balanced')
-    images_train = images_train[:256]
-    labels_train = labels_train[:256]
+    # images_train = images_train[:256]
+    # labels_train = labels_train[:256]
 
     train = Dataset(images_train, labels_train)
     test = Dataset(images_test, labels_test)
