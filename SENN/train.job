@@ -15,5 +15,9 @@ source activate FACT
 
 pip install ./
 
-srun python3 scripts/main_mnist.py --cuda --train |& tee -a results.txt
+for i in `seq 1 4`; do
+  srun python3 scripts/test.py |& tee -a output_$i &
+done
+wait
+
 
