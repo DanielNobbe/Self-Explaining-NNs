@@ -11,9 +11,9 @@
 
 module load 2019
 module load Miniconda2
-conda activate FACT
+source activate FACT
 
 pip install ./
 
-srun python scripts/main_emnist.py --cuda --train
+srun python3 scripts/main_mnist.py --cuda --train |& tee -a results.txt
 

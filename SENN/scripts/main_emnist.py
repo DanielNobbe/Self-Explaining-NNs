@@ -1,3 +1,7 @@
+# Ignore Future Warnings (Joosje)
+import warnings
+warnings.simplefilter(action='ignore', category=(FutureWarning, UserWarning))
+
 # Standard Imports
 import sys, os
 import numpy as np
