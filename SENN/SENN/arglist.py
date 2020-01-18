@@ -84,7 +84,7 @@ def get_senn_parser():
     parser.add_argument('--print_freq' , type=int, default=10, help='print frequency during train (in batches)')
     parser.add_argument('--debug', action='store_true', default=False, help='debug mode' )
 
-    parser.add_argument('--lisa', default = False, help='Execution on Lisa')
+    parser.add_argument('--lisa', type=int, default = 0, help='Execution on Lisa')
 
     return parser
 

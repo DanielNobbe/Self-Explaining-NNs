@@ -209,6 +209,8 @@ def main():
 
     model_path, log_path, results_path = generate_dir_names('mnist', args)
 
+    print("Model path out", model_path)
+
     train_loader, valid_loader, test_loader, train_tds, test_tds = load_mnist_data(
                         batch_size=args.batch_size,num_workers=args.num_workers
                         )
