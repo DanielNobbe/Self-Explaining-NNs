@@ -15,8 +15,11 @@ source activate FACT
 
 pip install ./
 
-for i in `seq 1 4`; do
-  srun python3 scripts/mnist.py --lisa True --train |& tee -a "$SLURM_SUBMIT_DIR"/lisa_output/slurm/output_$i &
+# Number of concepts to be trained on
+concepts = (5, 10, 15)
+
+for i in `seq 0 2`; do
+  srun python3 scripts/mnist.py --lisa 1 --nconcepts ${concepts[i]} --train |& tee -a "$SLURM_SUBMIT_DIR"/lisa_output/slurm/output_$i &
 done
 wait
 
