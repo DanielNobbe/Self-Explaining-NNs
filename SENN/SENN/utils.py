@@ -51,10 +51,13 @@ def generate_dir_names(dataset, args, make = True):
                     args.lr,
                     )
 
+
     model_path     = os.path.join(args.model_path, dataset, suffix)
     log_path       = os.path.join(args.log_path, dataset, suffix)
     results_path   = os.path.join(args.results_path, dataset, suffix)
-    print("Results path", results_path)
+    
+    if args.lisa == True:
+        model_path = os.path.join('lisa_output', 'models', dataset, suffix)
 
     if make:
         for p in [model_path, results_path]: #, log_path,
