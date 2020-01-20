@@ -279,8 +279,6 @@ class ClassificationTrainer():
             batch_time.update(time.time() - end)
             end = time.time()
 
-            break
-            
             if i % self.print_freq == 0:
                 print('Epoch: [{0}][{1}/{2}]  '
                       'Time {batch_time.val:.2f} ({batch_time.avg:.2f})  '
