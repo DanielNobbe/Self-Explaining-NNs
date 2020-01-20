@@ -279,6 +279,8 @@ class ClassificationTrainer():
             batch_time.update(time.time() - end)
             end = time.time()
 
+            break
+            
             if i % self.print_freq == 0:
                 print('Epoch: [{0}][{1}/{2}]  '
                       'Time {batch_time.val:.2f} ({batch_time.avg:.2f})  '
@@ -302,6 +304,14 @@ class ClassificationTrainer():
         end = time.time()
         for i, (inputs, targets) in enumerate(val_loader):
             # get the inputs
+            device = inputs.device
+            inputs = inputs.type(torch.FloatTensor).to(device)  # only Tensors of floating point dtype can require gradients for EMNIST
+            targets = targets.type(torch.LongTensor).to(device)
+            if len(inputs.size()) == 3:
+                inputs = inputs.unsqueeze(dim = 1)
+            elif len(inputs.size()) != 4:
+                print("Handling for number of dims other than 3 or 4 not implemented.")
+
             if self.cuda:
                 inputs, targets = inputs.cuda(), targets.cuda()
             input_var = torch.autograd.Variable(inputs, volatile=True)
