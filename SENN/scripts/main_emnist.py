@@ -268,7 +268,7 @@ def main():
     #     All_Results['stability_blackbox'] = lips
 
         # add concept plot
-    concept_grid(model, test_loader, top_k=10, save_path=results_path + '/concept_grid.pdf')
+    concept_grid(model, test_loader, cuda = args.cuda,  top_k=10, save_path=results_path + '/concept_grid.pdf')
 
     # pickle.dump(All_Results, open(results_path + '_combined_metrics.pkl'.format(dataname), "wb"))
 
