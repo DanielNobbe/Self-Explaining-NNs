@@ -121,8 +121,10 @@ class new_wrapper(gsenn_wrapper):
 
             # print("attributions: ", atts)
             corrs.append(np.corrcoef(p_d, att)[0,1]) # Compute correlation per sample, then aggreate
+            # print("Correlations of a single sample: ", corrs)
 
         corrs = np.array(corrs)
+        print("Correlations for a single batch: ", corrs)
         # pdb.set_trace()
         # drops = np.stack(drops)
         # atts  = np.stack(atts)
@@ -297,95 +299,100 @@ def main():
     
 
     ### Consistency analysis
-
-    # for i, (inputs, targets) in enumerate(test_loader):
-    #         # get the inputs
-    #         if model.cuda:
-    #             inputs, targets = inputs.cuda(), targets.cuda()
-    #         input_var = torch.autograd.Variable(inputs, volatile=True)
+    correlations = np.array([])
+    for i, (inputs, targets) in enumerate(test_loader):
+            # get the inputs
+            if model.cuda:
+                inputs, targets = inputs.cuda(), targets.cuda()
+            input_var = torch.autograd.Variable(inputs, volatile=True)
             
-    #         save_path = results_path + '/faithfulness' + str(i) + '/'
-    #         if not os.path.isdir(save_path):
-    #             os.mkdir(save_path)
-    #         corrs = expl.compute_dataset_consistency(input_var, inputs_are_concepts = False, save_path = save_path)
+            save_path = results_path + '/faithfulness' + str(i) + '/'
+            if not os.path.isdir(save_path):
+                os.mkdir(save_path)
+            corrs = expl.compute_dataset_consistency(input_var, inputs_are_concepts = False, save_path = save_path)
+            correlations = np.append(correlations, corrs)
+            if i > 1:
+                break
+    average_correlation = np.sum(correlations)/len(correlations)
+    print("Average correlation:", average_correlation)
             
 
 
-    # #### Debug argmax plot_theta_stability
-    if args.h_type == 'input':
-        x = next(iter(test_tds))[0].numpy()
-        y = next(iter(test_tds))[0].numpy()
-        x_raw = (test_tds.test_data[0].float()/255).numpy()
-        y_raw = revert_to_raw(x)
-        att_x = expl(x, show_plot = False)
-        att_y = expl(y, show_plot = False)
-        lip = 1
-        lipschitz_argmax_plot(x_raw, y_raw, att_x,att_y, lip)# save_path=fpath)
+    # # #### Debug argmax plot_theta_stability
+    # if args.h_type == 'input':
+    #     x = next(iter(test_tds))[0].numpy()
+    #     y = next(iter(test_tds))[0].numpy()
+    #     x_raw = (test_tds.test_data[0].float()/255).numpy()
+    #     y_raw = revert_to_raw(x)
+    #     att_x = expl(x, show_plot = False)
+    #     att_y = expl(y, show_plot = False)
+    #     lip = 1
+    #     lipschitz_argmax_plot(x_raw, y_raw, att_x,att_y, lip)# save_path=fpath)
 
-        #pdb.set_trace()
+    #     #pdb.set_trace()
 
 
-    ### 2. Single example lipschitz estimate with Black Box
-    do_bb_stability_example = False # Aangepast: was False
-    if do_bb_stability_example:
-        print('**** Performing lipschitz estimation for a single point ****')
+    # ### 2. Single example lipschitz estimate with Black Box
+    # do_bb_stability_example = False # Aangepast: was False
+    # if do_bb_stability_example:
+    #     print('**** Performing lipschitz estimation for a single point ****')
 
-        idx = 0
-        print('Example index: {}'.format(idx))
-        #x = train_tds[idx][0].view(1,28,28).numpy()
-        x = next(iter(test_tds))[0].numpy()
-        x_raw = (test_tds.test_data[0].float()/255).numpy()
-        #x_raw = next(iter(train_tds))[0]
+    #     idx = 0
+    #     print('Example index: {}'.format(idx))
+    #     #x = train_tds[idx][0].view(1,28,28).numpy()
+    #     x = next(iter(test_tds))[0].numpy()
+    #     x_raw = (test_tds.test_data[0].float()/255).numpy()
+    #     #x_raw = next(iter(train_tds))[0]
 
-        # args.optim     = 'gp'
-        # args.lip_eps   = 0.1
-        # args.lip_calls = 10
-        Results = {}
+    #     # args.optim     = 'gp'
+    #     # args.lip_eps   = 0.1
+    #     # args.lip_calls = 10
+    #     Results = {}
 
-        lip, argmax = expl.local_lipschitz_estimate(x, bound_type='box_std',
-                                                optim=args.optim,
-                                                eps=args.lip_eps,
-                                                n_calls=4*args.lip_calls,
-                                                njobs = 1,
-                                                verbose=2)
-        #pdb.set_trace()
-        Results['lip_argmax'] = (x, argmax, lip)
-        # .reshape(inputs.shape[0], inputs.shape[1], -1)
-        att = expl(x, None, show_plot=False)#.squeeze()
-        # .reshape(inputs.shape[0], inputs.shape[1], -1)
-        att_argmax = expl(argmax, None, show_plot=False)#.squeeze()
+    #     lip, argmax = expl.local_lipschitz_estimate(x, bound_type='box_std',
+    #                                             optim=args.optim,
+    #                                             eps=args.lip_eps,
+    #                                             n_calls=4*args.lip_calls,
+    #                                             njobs = 1,
+    #                                             verbose=2)
+    #     #pdb.set_trace()
+    #     Results['lip_argmax'] = (x, argmax, lip)
+    #     # .reshape(inputs.shape[0], inputs.shape[1], -1)
+    #     att = expl(x, None, show_plot=False)#.squeeze()
+    #     # .reshape(inputs.shape[0], inputs.shape[1], -1)
+    #     att_argmax = expl(argmax, None, show_plot=False)#.squeeze()
 
-        #pdb.set_trace()
-        Argmax_dict = {'lip': lip, 'argmax': argmax, 'x': x}
-        fpath = os.path.join(results_path, 'argmax_lip_gp_senn.pdf')
-        if args.h_type == 'input':
-            lipschitz_argmax_plot(x_raw, revert_to_raw(argmax), att, att_argmax, lip, save_path=fpath)
-        pickle.dump(Argmax_dict, open(
-            results_path + '/argmax_lip_gp_senn.pkl', "wb"))
-        pdb.set_trace()
-        # print(asd.asd)
+    #     #pdb.set_trace()
+    #     Argmax_dict = {'lip': lip, 'argmax': argmax, 'x': x}
+    #     fpath = os.path.join(results_path, 'argmax_lip_gp_senn.pdf')
+    #     if args.h_type == 'input':
+    #         lipschitz_argmax_plot(x_raw, revert_to_raw(argmax), att, att_argmax, lip, save_path=fpath)
+    #     pickle.dump(Argmax_dict, open(
+    #         results_path + '/argmax_lip_gp_senn.pkl', "wb"))
+    #     pdb.set_trace()
+    #     # print(asd.asd)
 
-    noise_stability_plots(model, test_tds, cuda = args.cuda, save_path = results_path)
+    # noise_stability_plots(model, test_tds, cuda = args.cuda, save_path = results_path)
     
-    ### 3. Local lipschitz estimate over multiple samples with Black BOx Optim
-    do_bb_stability = True # Aangepast, was: True
-    if do_bb_stability:
-        print('**** Performing black-box lipschitz estimation over subset of dataset ****')
-        maxpoints = 20
-        #valid_loader 0 it's shuffled, so it's like doing random choice
-        mini_test = next(iter(valid_loader))[0][:maxpoints].numpy()
-        lips = expl.estimate_dataset_lipschitz(mini_test,
-                                           n_jobs=-1, bound_type='box_std',
-                                           eps=args.lip_eps, optim=args.optim,
-                                           n_calls=args.lip_calls, verbose=2)
-        pdb.set_trace()
-        Stability_dict = {'lips': lips}
-        pickle.dump(Stability_dict, open(results_path + '_stability_blackbox.pkl', "wb"))
-        All_Results['stability_blackbox'] = lips 
+    # ### 3. Local lipschitz estimate over multiple samples with Black BOx Optim
+    # do_bb_stability = True # Aangepast, was: True
+    # if do_bb_stability:
+    #     print('**** Performing black-box lipschitz estimation over subset of dataset ****')
+    #     maxpoints = 20
+    #     #valid_loader 0 it's shuffled, so it's like doing random choice
+    #     mini_test = next(iter(valid_loader))[0][:maxpoints].numpy()
+    #     lips = expl.estimate_dataset_lipschitz(mini_test,
+    #                                        n_jobs=-1, bound_type='box_std',
+    #                                        eps=args.lip_eps, optim=args.optim,
+    #                                        n_calls=args.lip_calls, verbose=2)
+    #     pdb.set_trace()
+    #     Stability_dict = {'lips': lips}
+    #     pickle.dump(Stability_dict, open(results_path + '_stability_blackbox.pkl', "wb"))
+    #     All_Results['stability_blackbox'] = lips 
 
 
     # add concept plot
-    concept_grid(model, test_loader, top_k = 10, save_path = results_path + '/concept_grid.pdf')
+    # concept_grid(model, test_loader, top_k = 10, save_path = results_path + '/concept_grid.pdf')
 
     pickle.dump(All_Results, open(results_path + '_combined_metrics.pkl', "wb")) # Aangepast: .pkl was .format(dataname)
 
