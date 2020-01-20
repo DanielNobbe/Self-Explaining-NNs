@@ -379,7 +379,8 @@ class ClassificationTrainer():
         batch_size = target.size(0)
         _, pred = output.topk(maxk, 1, True, True)
         pred = pred.t()
-        target = target.type(torch.LongTensor)  # to change from torch.ByteTensor to torch.LongTensor
+        device = target.device
+        target = target.type(torch.LongTensor).to(device)  # to change from torch.ByteTensor to torch.LongTensor
         correct = pred.eq(target.view(1, -1).expand_as(pred))
         res = []
         for k in topk:
@@ -567,7 +568,8 @@ class GradPenaltyTrainer(ClassificationTrainer):
         # Init
         self.optimizer.zero_grad()
         #self.model.zero_grad()
-        inputs = inputs.type(torch.FloatTensor)  # only Tensors of floating point dtype can require gradients for EMNIST
+        device = inputs.device
+        inputs = inputs.type(torch.FloatTensor).to(device)  # only Tensors of floating point dtype can require gradients for EMNIST
         # inputs = inputs.reshape(inputs.shape[0], 1, 28, 28)  # not sure if still necessary, because image was of wrong dimensions
         inputs.requires_grad = True
 
