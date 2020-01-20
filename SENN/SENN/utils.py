@@ -609,9 +609,15 @@ def concept_grid(model, data_loader, cuda=False, top_k = 6, layout = 'vertical',
     all_activs = []
     for idx, (data, target) in enumerate(data_loader):
         # get the inputs
+        data = data.type(torch.FloatTensor) # only Tensors of floating point dtype can require gradients for EMNIST
+        target = target.type(torch.LongTensor)
+        data, target = Variable(data, volatile=True), Variable(target)
         if cuda:
             data, target = data.cuda(), target.cuda()
-        data, target = Variable(data, volatile=True), Variable(target)
+        if len(data.size()) == 3:
+                data = data.unsqueeze(dim = 1)
+        elif len(data.size()) != 4:
+                print("Handling for number of dims other than 3 or 4 not implemented.")
         output = model(data)
         concepts = model.concepts.data
         #pdb.set_trace()
