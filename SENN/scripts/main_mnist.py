@@ -168,7 +168,6 @@ class new_wrapper(gsenn_wrapper):
             # print("delta_i: ", delta_i)
             deltas.append(delta_i.cpu().detach().numpy())
         prob_drops = np.array(deltas)
-        print("Size of sign of h: ", np.sign(h_x.cpu().detach().numpy()).shape)
         attributions[0] = attributions[0] * np.sign(h_x.cpu().detach().numpy())[0, :, 0]
 
         plot = True
@@ -395,7 +394,7 @@ def main():
 
 
     # add concept plot
-    # concept_grid(model, test_loader, top_k = 10, save_path = results_path + '/concept_grid.pdf')
+    concept_grid(model, test_loader, cuda = args.cuda, top_k = 10, save_path = results_path + '/concept_grid.pdf')
 
     pickle.dump(All_Results, open(results_path + '_combined_metrics.pkl', "wb")) # Aangepast: .pkl was .format(dataname)
 
