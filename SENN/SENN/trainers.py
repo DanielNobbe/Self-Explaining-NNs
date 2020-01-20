@@ -235,16 +235,22 @@ class ClassificationTrainer():
             # measure data loading time
             data_time.update(time.time() - end)
 
+            if len(inputs.size()) == 3:
+                inputs = inputs.unsqueeze(dim = 1)
+                # targets = targets.unsqueeze(dim = 1)
+            elif len(inputs.size()) != 4:
+                print("Handling for number of dims other than 3 or 4 not implemented.")
+
+
             # get the inputs
             if self.cuda:
                 inputs, targets = inputs.cuda(), targets.cuda()
 
             inputs, targets = Variable(inputs), Variable(targets)
-
+            
             if self.reset_lstm:
                 self.model.zero_grad()
                 self.model.parametrizer.hidden = self.model.parametrizer.init_hidden()# detaching it from its history on the last instance.
-
             outputs, loss, loss_dict = self.train_batch(inputs, targets)
             loss_dict['iter'] = i + (len(train_loader)*epoch)
             
@@ -450,7 +456,6 @@ class VanillaClassTrainer(ClassificationTrainer):
         """ inputs, targets already variables """
         self.optimizer.zero_grad()
         pred = self.model(inputs)
-
         # Loss
         try:
             pred_loss       = self.prediction_criterion(pred, targets)
@@ -570,12 +575,12 @@ class GradPenaltyTrainer(ClassificationTrainer):
         #self.model.zero_grad()
         device = inputs.device
         inputs = inputs.type(torch.FloatTensor).to(device)  # only Tensors of floating point dtype can require gradients for EMNIST
+        targets = targets.type(torch.LongTensor).to(device)
         # inputs = inputs.reshape(inputs.shape[0], 1, 28, 28)  # not sure if still necessary, because image was of wrong dimensions
         inputs.requires_grad = True
 
         # Predict
         pred = self.model(inputs)
-
         # Calculate loss
         pred_loss       = self.prediction_criterion(pred, targets)
         all_losses = {'prediction': pred_loss.data[0]}
