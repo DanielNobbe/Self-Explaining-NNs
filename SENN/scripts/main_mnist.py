@@ -168,6 +168,9 @@ class new_wrapper(gsenn_wrapper):
             # print("delta_i: ", delta_i)
             deltas.append(delta_i.cpu().detach().numpy())
         prob_drops = np.array(deltas)
+        print("Size of sign of h: ", np.sign(h_x.cpu().detach().numpy()).shape)
+        attributions[0] = attributions[0] * np.sign(h_x.cpu().detach().numpy())[0, :, 0]
+
         plot = True
         if plot:
             plot_prob_drop(attributions[0], prob_drops, save_path = save_path) # remove [0] after attributions for uci
@@ -311,7 +314,7 @@ def main():
                 os.mkdir(save_path)
             corrs = expl.compute_dataset_consistency(input_var, inputs_are_concepts = False, save_path = save_path)
             correlations = np.append(correlations, corrs)
-            if i > 1:
+            if i > 2:
                 break
     average_correlation = np.sum(correlations)/len(correlations)
     print("Average correlation:", average_correlation)
