@@ -106,7 +106,7 @@ class new_wrapper(gsenn_wrapper):
         i = 0
         for x in dataset:
             if save_path:
-                path = save_path + '_' + str(i)
+                path = save_path + '_' + str(i) + '/'
             else:
                 path = save_path
             target = targets[i]
@@ -187,13 +187,24 @@ class new_wrapper(gsenn_wrapper):
             deltas.append(delta_i.cpu().detach().numpy())
         prob_drops = np.array(deltas)
         if alternative:
-            attributions_plot = attributions.squeeze() * h_x.cpu().detach().numpy().squeeze()
+            attributions_plot_alt = attributions.squeeze() * h_x.cpu().detach().numpy().squeeze()
         else:
             attributions_plot = attributions.squeeze()
         plot = True
         if plot:
+            save_path_or = save_path + 'original'
+            if not os.path.isdir(save_path):
+                print(save_path)
+                os.mkdir(save_path)
+            # if not os.path.isdir(save_path_or):
+            #     os.mkdir(save_path_or)
+            save_path_alt = save_path + 'alternative'
+            # if not os.path.isdir(save_path_alt):
+            #     os.mkdir(save_path_alt)
             print("Shape of attributions: ", attributions.shape)
-            plot_prob_drop(attributions_plot.squeeze(), prob_drops, save_path = save_path) # remove [0] after attributions for uci
+            plot_prob_drop(attributions_plot.squeeze(), prob_drops, save_path = save_path_or) # remove [0] after attributions for uci
+            if alternative:
+                plot_prob_drop(attributions_plot_alt.squeeze(), prob_drops, save_path = save_path_alt)
         return prob_drops, attributions
 
     def compute_dependencies(self, x, reference_value = 0, plot = False, save_path = None, inputs_are_concepts = False):
