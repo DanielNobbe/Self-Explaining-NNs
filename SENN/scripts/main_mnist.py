@@ -140,7 +140,7 @@ class new_wrapper(gsenn_wrapper):
                     if not os.path.isdir(plot_path):
                         os.mkdir(plot_path)
                     fig.savefig(plot_path + str(i), format = "png", dpi=300)
-        
+            plt.close('all')
             
         corrs = np.array(corrs)
         altcorrs = np.array(altcorrs)
@@ -200,7 +200,6 @@ class new_wrapper(gsenn_wrapper):
             save_path_alt = save_path + 'alternative'
             # if not os.path.isdir(save_path_alt):
             #     os.mkdir(save_path_alt)
-            print("Shape of attributions: ", attributions.shape)
             plot_prob_drop(attributions_plot.squeeze(), prob_drops, save_path = save_path_or) # remove [0] after attributions for uci
             if alternative:
                 plot_prob_drop(attributions_plot_alt.squeeze(), prob_drops, save_path = save_path_alt)
