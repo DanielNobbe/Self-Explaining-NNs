@@ -111,7 +111,7 @@ class new_wrapper(gsenn_wrapper):
                 path = save_path
             target = targets[i]
             i += 1
-            p_d, att = self.compute_prob_drop(x, target = target, inputs_are_concepts = inputs_are_concepts, save_path = path, alternative = False)
+            p_d, att = self.compute_prob_drop(x, target = target, inputs_are_concepts = inputs_are_concepts, save_path = path, alternative = True)
             # p_d is now theta*h for each concept.
             p_d = p_d.squeeze()
             att = att.squeeze()
@@ -188,8 +188,7 @@ class new_wrapper(gsenn_wrapper):
         prob_drops = np.array(deltas)
         if alternative:
             attributions_plot_alt = attributions.squeeze() * h_x.cpu().detach().numpy().squeeze()
-        else:
-            attributions_plot = attributions.squeeze()
+        attributions_plot = attributions.squeeze()
         plot = True
         if plot:
             save_path_or = save_path + 'original'
