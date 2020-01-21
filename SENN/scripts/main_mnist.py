@@ -95,22 +95,24 @@ def load_mnist_data(valid_size=0.1, shuffle=True, random_seed=2008, batch_size =
 
 class new_wrapper(gsenn_wrapper):
 
-    def compute_dataset_consistency(self,  dataset, reference_value = 0, inputs_are_concepts = True, save_path = None):
+    def compute_dataset_consistency(self,  dataset, targets = None, reference_value = 0, inputs_are_concepts = True, save_path = None, plot_alt_dependencies = True):
         """
             does compute_prob_drop for all dataset, returns stats and plots
         """
         drops = []
         atts  = []
         corrs = []
+        altcorrs = []
         i = 0
-        print("shape of x:", dataset.shape)
         for x in dataset:
             if save_path:
                 path = save_path + '_' + str(i)
             else:
                 path = save_path
+            target = targets[i]
             i += 1
-            p_d, att = self.compute_prob_drop(x, inputs_are_concepts = inputs_are_concepts, save_path = path)
+            p_d, att = self.compute_prob_drop(x, target = target, inputs_are_concepts = inputs_are_concepts, save_path = path, alternative = False)
+            # p_d is now theta*h for each concept.
             p_d = p_d.squeeze()
             att = att.squeeze()
             drops.append(p_d)
@@ -121,29 +123,38 @@ class new_wrapper(gsenn_wrapper):
 
             # print("attributions: ", atts)
 
-            # This only uses the last drops and atts??
-            corrs.append(np.corrcoef(p_d, att)[0,1]) # Compute correlation per sample, then aggreate
-            # IMPORTANT, TODO
-            # print("Correlations of a single sample: ", corrs)
-            classes = ['C' + str(i) for i in range(p_d.shape[0])]
-            d = dict(zip(classes, att))
-            A = plot_dependencies(d, title= 'Dependencies', sort_rows = False)
+            corrs.append(np.corrcoef(p_d, att)[0,1]) 
+            deps, thetas = self.compute_dependencies(x)
+            altcorrs.append(np.corrcoef(p_d, deps)[0,1])
+            if plot_alt_dependencies:
+
+
+                classes = ['C' + str(i) for i in range(p_d.shape[0])]
+                deps_to_plot = dict(zip(classes, deps))
+                thetas_to_plot = dict(zip(classes, thetas[0]))
+                fig, ax = plt.subplots(1, 2)
+                A = plot_dependencies(deps_to_plot, title= 'Combined dependencies, target = ' + str(target), sort_rows = False, ax = ax[0])
+                B = plot_dependencies(thetas_to_plot, title='Theta dependencies', sort_rows = False, ax = ax[1])
+                if not save_path == None:
+                    plot_path = save_path + '/dependencies/'
+                    if not os.path.isdir(plot_path):
+                        os.mkdir(plot_path)
+                    fig.savefig(plot_path + str(i), format = "png", dpi=300)
         
             
         corrs = np.array(corrs)
-        print("Correlations for a single batch: ", corrs)
+        altcorrs = np.array(altcorrs)
         # pdb.set_trace()
         # drops = np.stack(drops)
         # atts  = np.stack(atts)
         #
         # np.corrcoef(drops.flatten(), atts.flatten())
-        return corrs
+        return corrs, altcorrs
 
-    def compute_prob_drop(self, x, reference_value = 0, plot = False, save_path = None, inputs_are_concepts = True):
+    def compute_prob_drop(self, x, target = None, reference_value = 0, plot = False, save_path = None, inputs_are_concepts = True, alternative = False):
         """
             This is placed here to prevent having to update the robust_interpret package. 
         """
-        print("x size in compute prob drop: ", x.size())
         # First, turn inputs into concepts
         if not inputs_are_concepts:
             # x = x.type(torch.FloatTensor)
@@ -159,7 +170,7 @@ class new_wrapper(gsenn_wrapper):
         # else:
         #     f = self.model.forward(x.reshape(1,-1), h_x = h_x,  h_options = 1)
         pred_class = f.argmax()
-        attributions = self(x) # attributions are theta values (i think)
+        attributions = self(x, y = target) # attributions are theta values (i think)
         deltas = []
         for i in tqdm(range(h_x.shape[1])):
             x_p = x.clone()
@@ -175,14 +186,32 @@ class new_wrapper(gsenn_wrapper):
             # print("delta_i: ", delta_i)
             deltas.append(delta_i.cpu().detach().numpy())
         prob_drops = np.array(deltas)
-        # attributions[0] = attributions[0] * np.sign(h_x.cpu().detach().numpy())[0, :, 0]
-        print("thetas: ", attributions)
-        print("h :", h_x)
-        prob_drops = h_x.cpu().detach().numpy()
+        if alternative:
+            attributions_plot = attributions.squeeze() * h_x.cpu().detach().numpy().squeeze()
+        else:
+            attributions_plot = attributions.squeeze()
         plot = True
-        # if plot:
-            # plot_prob_drop(attributions[0], prob_drops, save_path = save_path) # remove [0] after attributions for uci
+        if plot:
+            print("Shape of attributions: ", attributions.shape)
+            plot_prob_drop(attributions_plot.squeeze(), prob_drops, save_path = save_path) # remove [0] after attributions for uci
         return prob_drops, attributions
+
+    def compute_dependencies(self, x, reference_value = 0, plot = False, save_path = None, inputs_are_concepts = False):
+        if not inputs_are_concepts:
+                # x = x.type(torch.FloatTensor)
+                x = x.unsqueeze(dim = 0)
+                h_x = self.net.forward(x, h_options = -1)
+                # print("h_x: ",h_x)
+                f = self.net.forward(x, h_x = h_x, h_options = 1)
+            # Then, use concepts to forward pass through the model
+            # if inputs_are_concepts:
+        else:
+            x = h_x # model is compute_proba function, not neural model - we need to add output layer to compute probabilities. Not necessary for now TODO
+            f   = self.net.forward(x.reshape(1,-1))
+        thetas = self(x) # attributions are theta values (i think)
+        dependencies = thetas.squeeze() * h_x.cpu().detach().numpy().squeeze()
+        return dependencies, thetas
+
 
 def parse_args():
     senn_parser = get_senn_parser()
@@ -311,23 +340,29 @@ def main():
 
     ### Consistency analysis
     correlations = np.array([])
+    altcorrelations = np.array([])
     for i, (inputs, targets) in enumerate(test_loader):
             # get the inputs
             if model.cuda:
                 inputs, targets = inputs.cuda(), targets.cuda()
             input_var = torch.autograd.Variable(inputs, volatile=True)
-            
+            target_var = torch.autograd.Variable(targets)
             save_path = results_path + '/faithfulness' + str(i) + '/'
             if not os.path.isdir(save_path):
                 os.mkdir(save_path)
-            corrs = expl.compute_dataset_consistency(input_var, inputs_are_concepts = False, save_path = save_path)
+            corrs, altcorrs = expl.compute_dataset_consistency(input_var, targets = target_var, inputs_are_concepts = False, save_path = save_path)
             correlations = np.append(correlations, corrs)
+            altcorrelations = np.append(altcorrelations, altcorrs)
             if i > 2:
                 break
     average_correlation = np.sum(correlations)/len(correlations)
     std_correlation = np.std(correlations)
+    average_alt_correlation = np.sum(altcorrelations)/len(altcorrelations)
+    std_alt_correlation = np.std(altcorrelations)
     print("Average correlation:", average_correlation)
     print("Standard deviation of correlations: ", std_correlation)
+    print("Average alternative correlation:", average_alt_correlation)
+    print("Standard deviation of alternative correlations: ", std_alt_correlation)
             
 
 
