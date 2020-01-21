@@ -49,7 +49,7 @@ from SENN.conceptizers import image_fcc_conceptizer, image_cnn_conceptizer, inpu
 from SENN.parametrizers import image_parametrizer
 from SENN.aggregators import linear_scalar_aggregator, additive_scalar_aggregator
 from SENN.trainers import HLearningClassTrainer, VanillaClassTrainer, GradPenaltyTrainer
-from SENN.utils import plot_theta_stability, generate_dir_names, noise_stability_plots, concept_grid, plot_prob_drop
+from SENN.utils import plot_theta_stability, generate_dir_names, noise_stability_plots, concept_grid, plot_prob_drop, plot_dependencies
 from SENN.eval_utils import estimate_dataset_lipschitz
 
 from robust_interpret.explainers import gsenn_wrapper
@@ -120,9 +120,16 @@ class new_wrapper(gsenn_wrapper):
             #pdb.set_trace()
 
             # print("attributions: ", atts)
-            corrs.append(np.corrcoef(p_d, att)[0,1]) # Compute correlation per sample, then aggreate
-            # print("Correlations of a single sample: ", corrs)
 
+            # This only uses the last drops and atts??
+            corrs.append(np.corrcoef(p_d, att)[0,1]) # Compute correlation per sample, then aggreate
+            # IMPORTANT, TODO
+            # print("Correlations of a single sample: ", corrs)
+            classes = ['C' + str(i) for i in range(p_d.shape[0])]
+            d = dict(zip(classes, att))
+            A = plot_dependencies(d, title= 'Dependencies', sort_rows = False)
+        
+            
         corrs = np.array(corrs)
         print("Correlations for a single batch: ", corrs)
         # pdb.set_trace()
@@ -168,11 +175,13 @@ class new_wrapper(gsenn_wrapper):
             # print("delta_i: ", delta_i)
             deltas.append(delta_i.cpu().detach().numpy())
         prob_drops = np.array(deltas)
-        attributions[0] = attributions[0] * np.sign(h_x.cpu().detach().numpy())[0, :, 0]
-
+        # attributions[0] = attributions[0] * np.sign(h_x.cpu().detach().numpy())[0, :, 0]
+        print("thetas: ", attributions)
+        print("h :", h_x)
+        prob_drops = h_x.cpu().detach().numpy()
         plot = True
-        if plot:
-            plot_prob_drop(attributions[0], prob_drops, save_path = save_path) # remove [0] after attributions for uci
+        # if plot:
+            # plot_prob_drop(attributions[0], prob_drops, save_path = save_path) # remove [0] after attributions for uci
         return prob_drops, attributions
 
 def parse_args():
@@ -316,7 +325,9 @@ def main():
             if i > 2:
                 break
     average_correlation = np.sum(correlations)/len(correlations)
+    std_correlation = np.std(correlations)
     print("Average correlation:", average_correlation)
+    print("Standard deviation of correlations: ", std_correlation)
             
 
 
