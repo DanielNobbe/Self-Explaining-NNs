@@ -507,8 +507,9 @@ def plot_dependencies(dictionary_values,
                                   loc='left', cellLoc = 'right',
                                   bbox=[0.2, 0.025, 0.95, 0.95])
         ax_table.set_title('Input Value')
+        # plt.savefig("out/h_dep.pdf", format = "pdf", dpi=300)
         return ax, ax_table
-
+    # plt.savefig("out/h_dep.pdf", format = "pdf", dpi=300)
     return ax
 
 

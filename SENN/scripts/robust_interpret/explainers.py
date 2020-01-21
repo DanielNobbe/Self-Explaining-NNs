@@ -774,7 +774,11 @@ class gsenn_wrapper(explainer_wrapper):
             #attributions = attributions.reshape()
         else:
             # Will compute attribution w.r.t. to provided classes
-            expl_target_class = target_tensor * y
+            if y.nelement()>1:
+                _, expl_target_class = torch.max(y)
+            else:
+                expl_target_class = y
+            attributions = attrib_mat.gather(2,expl_target_class.cpu().view(-1,1).unsqueeze(2).repeat(1,natt,nclass))[:,:,0].numpy()
 
 
         if self.skip_bias and getattr(self.net.conceptizer, "add_bias", None):
