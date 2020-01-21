@@ -262,7 +262,7 @@ class GSENN(nn.Module):
         if type(x) is np.ndarray:
             to_numpy = True
             x_t = torch.from_numpy(x).float()
-        elif type(x) is Tensor:
+        elif type(x) is torch.Tensor:
             x_t = x.clone()
         else:
             print(type(x))
@@ -314,13 +314,13 @@ class GSENN(nn.Module):
             # desired class
             _, idx = torch.max(out, 1)
             y = idx.data
-            
+
             attr = theta.gather(
                 2, y.view(-1, 1).unsqueeze(2).repeat(1, theta.shape[1], theta.shape[2]))[:, :, 0]
         elif (y == 'all') or (y is None):
             # retrieve explanation for all classes
             attr = theta
-        
+
         if (not skip_bias) and self.conceptizer.add_bias:
             pdb.set_trace()
             print('here')

@@ -49,6 +49,8 @@ from SENN.aggregators import additive_scalar_aggregator
 from SENN.trainers import VanillaClassTrainer, GradPenaltyTrainer
 
 from robust_interpret.utils import lipschitz_feature_argmax_plot
+# (Added by Lennert) More local imports
+from robust_interpret.explainers import gsenn_wrapper
 
 def find_conflicting(df, labels, consensus_delta = 0.2):
     """
@@ -216,6 +218,38 @@ def main():
                                   feat_names = feat_names,
                                   digits=2, figsize=(5,6), widths=(2,3),
                                   save_path=ppath + '.pdf')
+    # Added by Lennert:
+    # set up input arguments for GSENN wrapper
+    features = None
+    classes = [0, 1]
+    model.eval()
+    expl = gsenn_wrapper(model,
+                        mode = 'classification',
+                        input_type = 'feature',
+                        feature_names = 'features',
+                        class_names = 'classes',
+                        train_data = train_loader,
+                        skip_bias = True,
+                        verbose = False)
+
+    # Iteratively perform faithfulness analysis on test inputs
+    for i, (inputs, targets) in enumerate(test_loader):
+        #print(inputs)
+        # print(targets)
+        # get inputs
+        # if model.cuda:
+        #     inputs, targets = input.cuda(), targets.cuda()
+
+        input_var = torch.autograd.Variable(inputs, volatile = True)
+
+        save_dir = results_path + '/faithfulness/'
+        if not os.path.isdir(save_dir):
+            os.makedirs(save_dir)
+
+        save_path = os.path.join(save_dir, str(i) + 'test')
+        corrs = expl.compute_dataset_consistency(input_var,
+         save_path = save_path)
+
 
 
 if __name__ == "__main__":

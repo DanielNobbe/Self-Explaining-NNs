@@ -249,7 +249,7 @@ class explainer_wrapper(object):
         # Same with self dists
         den_dists[den_dists==0] = -1 #float('inf')
         if same_class:
-            
+
             for i in range(n):
                 for j in range(n):
                     if Preds_class[i] != Preds_class[j]:
@@ -261,7 +261,7 @@ class explainer_wrapper(object):
         argmaxes = {i:  [(j,v) for (j,v) in zip(inds[i,:],vals[i,:])] for i in range(n)}
         return vals.squeeze(), argmaxes
 
-    def compute_dataset_consistency(self,  dataset, reference_value = 0):
+    def compute_dataset_consistency(self,  dataset, reference_value = 0, save_path = None):
         """
             does compute_prob_drop for all dataset, returns stats and plots
 
@@ -270,7 +270,7 @@ class explainer_wrapper(object):
         atts  = []
         corrs = []
         for x in dataset:
-            p_d, att = self.compute_prob_drop(x)
+            p_d, att = self.compute_prob_drop(x, save_path = save_path)
             p_d = p_d.squeeze()
             att = att.squeeze()
             drops.append(p_d)
@@ -288,7 +288,7 @@ class explainer_wrapper(object):
         # np.corrcoef(drops.flatten(), atts.flatten())
         return corrs
 
-    def compute_prob_drop(self, x, reference_value = 0, plot = False, save_path = None):
+    def compute_prob_drop(self, x, reference_value = 0, plot = True, save_path = None):
         """
             Warning: this only works for SENN if concepts are inputs!!!!
             In that case, must use the compute prob I have in SENN class.
@@ -298,14 +298,14 @@ class explainer_wrapper(object):
         attributions = self(x)
         deltas = []
         for i in tqdm(range(x.shape[0])):
-            x_p = x.copy()
+            x_p = x.clone()
             x_p[i] = reference_value
             f_p = self.model(x_p.reshape(1,-1))
             delta_i = (f - f_p)[0,pred_class]
             deltas.append(delta_i)
         prob_drops = np.array(deltas)
         if plot:
-            plot_prob_drop(attributions, prob_drops, save_path = save_path)
+            plot_prob_drop(attributions[0], prob_drops, save_path = save_path)
         return prob_drops, attributions
 
 
@@ -313,7 +313,7 @@ class explainer_wrapper(object):
         """
             x: either (n x d) if features or (n x d1 x d2) if gray image or (n x d1 x d2 x c) if color
         """
-        
+
         # for different types of data _display_attribs_image , etc
         n_cols = 4
         n_rows = max(int(len(attributions) / 2), 1)
@@ -392,7 +392,7 @@ class shap_wrapper(explainer_wrapper):
         #     exp = exp_classes[y] # explanation of desired class for multiclass case
         if self.multiclass:
             exp = np.array([exp_classes[y[i]][i]
-                            for i in range(len(exp_classes[0]))])  
+                            for i in range(len(exp_classes[0]))])
         else:
             exp = exp_classes
 
@@ -463,7 +463,7 @@ class lime_wrapper(explainer_wrapper):
         return vals
 
     def extract_att_image(self, exp, y=None):
-        
+
         if y is None or (type(y) in [list,tuple] and y[0] is None):
             y = exp.top_labels[0]
         scores = self.get_img_weight_matrix_(exp,
@@ -498,13 +498,13 @@ class lime_wrapper(explainer_wrapper):
         return scores
 
     def __call__(self, x, y=None, x_raw=None,  return_dict=False, show_plot=False):
-        
+
         # the only thing that will change is labels and toplabels
 
         # if y is None:
         #     # No target class provided - use predicted
         #     y = self.model(x).argmax(1)
-        #     
+        #
         if (self.lime_type == 'tabular' and x.ndim == 1) or \
            (self.lime_type == 'image' and x.ndim == 3):
             if not self.multiclass:
@@ -705,7 +705,7 @@ class gsenn_wrapper(explainer_wrapper):
         #     self.net = model
         super().__init__(self.net.predict_proba, mode, None,
                          multiclass, feature_names, class_names, None)
-        
+
         # dataloader or Dataset that does not involve iterating
         stack = []
         for input,_ in train_data:
