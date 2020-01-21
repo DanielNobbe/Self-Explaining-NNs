@@ -764,7 +764,7 @@ def plot_prob_drop(attribs, prob_drop, save_path = None):
     if save_path:
         plt.savefig(save_path, bbox_inches = 'tight', format='pdf', dpi=300)
 
-    plt.show()
+    #plt.show()
 
 def noise_stability_plots(model, dataset, cuda, save_path):
     # find one example of each digit:
