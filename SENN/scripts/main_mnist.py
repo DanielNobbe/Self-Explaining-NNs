@@ -133,7 +133,7 @@ class new_wrapper(gsenn_wrapper):
                 deps_to_plot = dict(zip(classes, deps))
                 thetas_to_plot = dict(zip(classes, thetas[0]))
                 fig, ax = plt.subplots(1, 2)
-                A = plot_dependencies(deps_to_plot, title= 'Combined dependencies, target = ' + str(target), sort_rows = False, ax = ax[0])
+                A = plot_dependencies(deps_to_plot, title= 'Combined dependencies, target = ' + str(target.item()), sort_rows = False, ax = ax[0])
                 B = plot_dependencies(thetas_to_plot, title='Theta dependencies', sort_rows = False, ax = ax[1])
                 if not save_path == None:
                     plot_path = save_path + '/dependencies/'
