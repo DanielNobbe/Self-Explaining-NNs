@@ -774,11 +774,18 @@ class gsenn_wrapper(explainer_wrapper):
             #attributions = attributions.reshape()
         else:
             # Will compute attribution w.r.t. to provided classes
+            if y.type() != torch.LongTensor:
+                y = y.type(torch.LongTensor)
             if y.nelement()>1:
                 _, expl_target_class = torch.max(y)
             else:
                 expl_target_class = y
-            attributions = attrib_mat.gather(2,expl_target_class.cpu().view(-1,1).unsqueeze(2).repeat(1,natt,nclass))[:,:,0].numpy()
+
+            print("HIER BRO")
+            print(expl_target_class.shape)
+            print(expl_target_class.cpu().view(-1,1).unsqueeze(2).repeat(1,natt,nclass).shape)
+            # Might need complementary theta # TODO:
+            attributions = attrib_mat.squeeze()
 
 
         if self.skip_bias and getattr(self.net.conceptizer, "add_bias", None):

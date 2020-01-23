@@ -55,9 +55,9 @@ def generate_dir_names(dataset, args, make = True):
     model_path     = os.path.join(args.model_path, dataset, suffix)
     log_path       = os.path.join(args.log_path, dataset, suffix)
     results_path   = os.path.join(args.results_path, dataset, suffix)
-    
-    if args.lisa == 1:
-        model_path = os.path.join('lisa_output', 'models', dataset, suffix)
+
+    # if args.lisa == 1:
+    #     model_path = os.path.join('lisa_output', 'models', dataset, suffix)
 
     if make:
         for p in [model_path, results_path]: #, log_path,
@@ -617,8 +617,8 @@ def concept_grid(model, data_loader, cuda=False, top_k = 6, layout = 'vertical',
             data, target = data.cuda(), target.cuda()
         if len(data.size()) == 3:
                 data = data.unsqueeze(dim = 1)
-        elif len(data.size()) != 4:
-                print("Handling for number of dims other than 3 or 4 not implemented.")
+        # elif len(data.size()) != 4:
+        #         print("Handling for number of dims other than 3 or 4 not implemented.")
         output = model(data)
         concepts = model.concepts.data
         #pdb.set_trace()

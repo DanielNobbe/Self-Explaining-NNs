@@ -207,10 +207,10 @@ class GSENN(nn.Module):
         #DEBUG = True
         # Three options for h - normal procedure, returns h_x from x (False), input from h (1) and input from x - output h (-1)
         # input from h: needs both h_x and x as input. Latter to calculate theta
-        # Output h: returns both h_x and x (x is necessary to finish forward pass later) 
-        # In essence, in the default way we do a forward pass for a model that takes the concepts 
-        # as inputs. In the other two ways, we generate the concepts, and allow the model 
-        # to do a forward pass based on the concepts, if the model normally takes raw data as input. 
+        # Output h: returns both h_x and x (x is necessary to finish forward pass later)
+        # In essence, in the default way we do a forward pass for a model that takes the concepts
+        # as inputs. In the other two ways, we generate the concepts, and allow the model
+        # to do a forward pass based on the concepts, if the model normally takes raw data as input.
         if DEBUG:
             print('Input to GSENN:', x.size())
 
@@ -227,8 +227,8 @@ class GSENN(nn.Module):
         elif h_options != 1:
             h_x = self.conceptizer(
                 autograd.Variable(x.data, requires_grad=False))
-        # elif h_options == False:
-        #     h_x = x # Other option is 1 - h_x is given
+        elif h_options == False:
+            h_x = x # Other option is 1 - h_x is given
 
         self.concepts = h_x  # .data
 
@@ -254,7 +254,9 @@ class GSENN(nn.Module):
             # Concepts are two-dimensional, so flatten
             h_x = h_x.view(h_x.size(0), h_x.size(1), -1)
 
-        out = self.aggregator(h_x, thetas)
+
+
+        out = self.aggregator(h_x.squeeze().squeeze(), thetas.squeeze().squeeze())
 
 
         # if self.aggregator.nclasses ==  1:

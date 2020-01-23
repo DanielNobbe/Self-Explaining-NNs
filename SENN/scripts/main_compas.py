@@ -52,6 +52,139 @@ from robust_interpret.utils import lipschitz_feature_argmax_plot
 # (Added by Lennert) More local imports
 from robust_interpret.explainers import gsenn_wrapper
 
+class new_wrapper(gsenn_wrapper):
+
+    def compute_dataset_consistency(self,  dataset, targets = None,
+     reference_value = 0, inputs_are_concepts = True, save_path = None,
+      plot_alt_dependencies = True):
+        """
+            does compute_prob_drop for all dataset, returns stats and plots
+        """
+        drops = []
+        atts  = []
+        corrs = []
+        altcorrs = []
+        i = 0
+        for x in dataset:
+            if save_path:
+                path = save_path + '_' + str(i) + '/'
+            else:
+                path = save_path
+            target = targets[i]
+            i += 1
+            p_d, att = self.compute_prob_drop(x, target = target, save_path = path,
+              alternative = True)
+            # p_d is now theta*h for each concept.
+            p_d = p_d.squeeze()
+            att = att.squeeze()
+            drops.append(p_d)
+            atts.append(att)
+            #pdb.set_trace()
+            #assert len(p_d).shape[0] == atts.shape[0], "Attributions has wrong size"
+            #pdb.set_trace()
+
+            # print("attributions: ", atts)
+
+            corrs.append(np.corrcoef(p_d, att)[0,1])
+            deps, thetas = self.compute_dependencies(x)
+            altcorrs.append(np.corrcoef(p_d, deps)[0,1])
+            if plot_alt_dependencies:
+
+
+                classes = ['C' + str(i) for i in range(p_d.shape[0])]
+                deps_to_plot = dict(zip(classes, deps))
+                thetas_to_plot = dict(zip(classes, thetas[0]))
+                fig, ax = plt.subplots(1, 2)
+                A = plot_dependencies(deps_to_plot, title= 'Combined dependencies, target = ' + str(target.item()), sort_rows = False, ax = ax[0])
+                B = plot_dependencies(thetas_to_plot, title='Theta dependencies', sort_rows = False, ax = ax[1])
+                if not save_path == None:
+                    plot_path = save_path + '/dependencies/'
+                    if not os.path.isdir(plot_path):
+                        os.mkdir(plot_path)
+                    fig.savefig(plot_path + str(i), format = "png", dpi=300)
+            plt.close('all')
+
+        corrs = np.array(corrs)
+        altcorrs = np.array(altcorrs)
+        # pdb.set_trace()
+        # drops = np.stack(drops)
+        # atts  = np.stack(atts)
+        #
+        # np.corrcoef(drops.flatten(), atts.flatten())
+        return corrs, altcorrs
+
+    def compute_prob_drop(self, x, target = None, reference_value = 0, plot = False, save_path = None, alternative = False):
+        """
+            This is placed here to prevent having to update the robust_interpret package.
+        """
+        # First, turn inputs into concepts
+        # if not inputs_are_concepts:
+        #     # x = x.type(torch.FloatTensor)
+        #     x = x.unsqueeze(dim = 0)
+        #     h_x = self.net.forward(x, h_options = -1)
+        #     # print("h_x: ",h_x)
+        #     f = self.net.forward(x, h_x = h_x, h_options = 1)
+        # # Then, use concepts to forward pass through the model
+        # # if inputs_are_concepts:
+        # else:
+        f   = self.net.forward(x.reshape(1,-1)) # model is compute_proba function, not neural model - we need to add output layer to compute probabilities. Not necessary for now TODO
+        h_x = x
+        # So for now, we use self.net
+        # else:
+        #     f = self.model.forward(x.reshape(1,-1), h_x = h_x,  h_options = 1)
+        pred_class = f.argmax()
+        attributions = self(x, y = target) # attributions are theta values (i think)
+        deltas = []
+        for i in tqdm(range(h_x.shape[0])):
+            x_p = x.clone()
+            # x_p[i] = reference_value # uncomment this to be compatible with uci dataset
+            h_x_p = h_x.clone()
+            h_x_p[i] = reference_value
+            # if inputs_are_concepts:
+            #     f_p = self.net(x_p.reshape(1,-1))
+            # else:
+            f_p = self.net.forward(x, h_x = h_x_p,  h_options = 1)
+            # print("outcome: ", f_p, f)
+            delta_i = (f - f_p)[0,pred_class]
+            # print("delta_i: ", delta_i)
+            deltas.append(delta_i.cpu().detach().numpy())
+        prob_drops = np.array(deltas)
+        if alternative:
+            attributions_plot_alt = attributions.squeeze() * h_x.cpu().detach().numpy().squeeze()
+        attributions_plot = attributions.squeeze()
+        plot = True
+        if plot:
+            save_path_or = save_path + 'original'
+            if not os.path.isdir(save_path):
+                print(save_path)
+                os.mkdir(save_path)
+            # if not os.path.isdir(save_path_or):
+            #     os.mkdir(save_path_or)
+            save_path_alt = save_path + 'alternative'
+            # if not os.path.isdir(save_path_alt):
+            #     os.mkdir(save_path_alt)
+            plot_prob_drop(attributions_plot.squeeze(), prob_drops, save_path = save_path_or) # remove [0] after attributions for uci
+            if alternative:
+                plot_prob_drop(attributions_plot_alt.squeeze(), prob_drops, save_path = save_path_alt)
+        return prob_drops, attributions
+
+    def compute_dependencies(self, x, reference_value = 0, plot = False, save_path = None, inputs_are_concepts = False):
+        if not inputs_are_concepts:
+                # x = x.type(torch.FloatTensor)
+                x = x.unsqueeze(dim = 0)
+                h_x = self.net.forward(x, h_options = -1)
+                # print("h_x: ",h_x)
+                f = self.net.forward(x, h_x = h_x, h_options = 1)
+            # Then, use concepts to forward pass through the model
+            # if inputs_are_concepts:
+        else:
+            x = h_x # model is compute_proba function, not neural model - we need to add output layer to compute probabilities. Not necessary for now TODO
+            f   = self.net.forward(x.reshape(1,-1))
+        thetas = self(x) # attributions are theta values (i think)
+        dependencies = thetas.squeeze() * h_x.cpu().detach().numpy().squeeze()
+        return dependencies, thetas
+
+
 def find_conflicting(df, labels, consensus_delta = 0.2):
     """
         Find examples with same exact feat vector but different label.
@@ -181,6 +314,7 @@ def main():
     print('Test accuracy: {:8.2f}'.format(test_acc))
 
 
+
     #noise_stability_plots(model, test_tds, cuda = args.cuda, save_path = results_path)
 
     lips, argmaxes = sample_local_lipschitz(model, test, mode = 2, top_k = 10, max_distance = 3)
@@ -193,37 +327,39 @@ def main():
     x      = test.tensors[0][imax]
     argmax = test.tensors[0][jmax]
 
-    pred_x = model(Variable(x.view(1,-1), volatile = True)).data
-    att_x = model.thetas.data.squeeze().numpy().squeeze()
+    # pred_x = model(Variable(x.view(1,-1), volatile = True)).data
+    # att_x = model.thetas.data.squeeze().numpy().squeeze()
 
-    pred_argmax = model(Variable(argmax.view(1,-1), volatile = True)).data
-    att_argmax = model.thetas.data.squeeze().numpy().squeeze()
+    # pred_argmax = model(Variable(argmax.view(1,-1), volatile = True)).data
+    # att_argmax = model.thetas.data.squeeze().numpy().squeeze()
 
     # pdb.set_trace()
-    results['x_max']      = x
-    results['x_argmax']      = argmax
-    results['test_discrete_glip']      = lips
-    results['test_discrete_glip_argmaxes'] = argmaxes
+    # results['x_max']      = x
+    # results['x_argmax']      = argmax
+    # results['test_discrete_glip']      = lips
+    # results['test_discrete_glip_argmaxes'] = argmaxes
 
 
-    print('Local g-Lipschitz estimate: {:8.2f}'.format(lips.mean()))
+    # print('Local g-Lipschitz estimate: {:8.2f}'.format(lips.mean()))
 
-    fpath = os.path.join(results_path, 'discrete_lip_gsenn')
-    ppath = os.path.join(results_path, 'relevance_argmax_gsenn')
+    # fpath = os.path.join(results_path, 'discrete_lip_gsenn')
+    # ppath = os.path.join(results_path, 'relevance_argmax_gsenn')
 
-    pickle.dump(results,  open(fpath+'.pkl',"wb")) # FOrmerly model_metrics
-
-    print(ppath)
-    lipschitz_feature_argmax_plot(x, argmax, att_x, att_argmax,
-                                  feat_names = feat_names,
-                                  digits=2, figsize=(5,6), widths=(2,3),
-                                  save_path=ppath + '.pdf')
+    # pickle.dump(results,  open(fpath+'.pkl',"wb")) # FOrmerly model_metrics
+    #
+    # print(ppath)
+    # lipschitz_feature_argmax_plot(x, argmax, att_x, att_argmax,
+    #                               feat_names = feat_names,
+    #                               digits=2, figsize=(5,6), widths=(2,3),
+    #                               save_path=ppath + '.pdf')
     # Added by Lennert:
     # set up input arguments for GSENN wrapper
     features = None
     classes = [0, 1]
     model.eval()
-    expl = gsenn_wrapper(model,
+
+    #
+    expl = new_wrapper(model,
                         mode = 'classification',
                         input_type = 'feature',
                         feature_names = 'features',
@@ -232,7 +368,45 @@ def main():
                         skip_bias = True,
                         verbose = False)
 
+    ### Consistency analysis
+    correlations = np.array([])
+    altcorrelations = np.array([])
+    for i, (inputs, targets) in enumerate(test_loader):
+            # get the inputs
+            # if model.cuda:
+            #     inputs, targets = inputs.cuda(), targets.cuda()
+            input_var = torch.autograd.Variable(inputs, volatile=True)
+            target_var = torch.autograd.Variable(targets)
+            save_path = results_path + '/faithfulness' + str(i) + '/'
+            if not os.path.isdir(save_path):
+                os.mkdir(save_path)
+            corrs, altcorrs = expl.compute_dataset_consistency(input_var, targets = target_var, inputs_are_concepts = False, save_path = save_path)
+            correlations = np.append(correlations, corrs)
+            altcorrelations = np.append(altcorrelations, altcorrs)
+            if i > 2:
+                break
+    average_correlation = np.sum(correlations)/len(correlations)
+    std_correlation = np.std(correlations)
+    average_alt_correlation = np.sum(altcorrelations)/len(altcorrelations)
+    std_alt_correlation = np.std(altcorrelations)
+    print("Average correlation:", average_correlation)
+    print("Standard deviation of correlations: ", std_correlation)
+    print("Average alternative correlation:", average_alt_correlation)
+    print("Standard deviation of alternative correlations: ", std_alt_correlation)
+
+
+
+    # expl = gsenn_wrapper(model,
+    #                     mode = 'classification',
+    #                     input_type = 'feature',
+    #                     feature_names = 'features',
+    #                     class_names = 'classes',
+    #                     train_data = train_loader,
+    #                     skip_bias = True,
+    #                     verbose = False)
+
     # Iteratively perform faithfulness analysis on test inputs
+
     for i, (inputs, targets) in enumerate(test_loader):
         #print(inputs)
         # print(targets)
