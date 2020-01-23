@@ -179,8 +179,10 @@ def main():
     print('Train accuracy: {:8.2f}'.format(train_acc))
     print('Valid accuracy: {:8.2f}'.format(valid_acc))
     print('Test accuracy: {:8.2f}'.format(test_acc))
+    print('SEH')
+    print(results)
 
-
+    # Changes made by Lennert:
     #noise_stability_plots(model, test_tds, cuda = args.cuda, save_path = results_path)
 
     lips, argmaxes = sample_local_lipschitz(model, test, mode = 2, top_k = 10, max_distance = 3)
@@ -246,7 +248,7 @@ def main():
         if not os.path.isdir(save_dir):
             os.makedirs(save_dir)
 
-        save_path = os.path.join(save_dir, str(i) + 'test')
+        save_path = os.path.join(save_dir, str(i) + 'prob_drop_plot.pdf')
         corrs = expl.compute_dataset_consistency(input_var,
          save_path = save_path)
 
