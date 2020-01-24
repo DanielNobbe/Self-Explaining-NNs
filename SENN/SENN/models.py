@@ -213,22 +213,21 @@ class GSENN(nn.Module):
         # to do a forward pass based on the concepts, if the model normally takes raw data as input.
         if DEBUG:
             print('Input to GSENN:', x.size())
-
         # Get interpretable features
         #h_x         = self.encoder(x.view(x.size(0), -1)).view(-1, self.natoms, self.dout)
         #self.recons = self.decoder(h_x.view(-1, self.dout*self.natoms))
-        if self.learning_H and h_options != 1:
+        if self.learning_H and h_options == -1:
             h_x, x_tilde = self.conceptizer(x)
             self.recons = x_tilde
             # if self.sparsity:
             # Store norm for regularization (done by Trainer)
             # .mul(self.l1weight) # Save sparsity loss, will be used by trainer
             self.h_norm_l1 = h_x.norm(p=1)
-        elif h_options != 1:
+        elif h_options == False:
             h_x = self.conceptizer(
                 autograd.Variable(x.data, requires_grad=False))
-        elif h_options == False:
-            h_x = x # Other option is 1 - h_x is given
+        # elif h_options == False:
+        #     h_x = x # Other option is 1 - h_x is given
 
         self.concepts = h_x  # .data
 
@@ -255,8 +254,7 @@ class GSENN(nn.Module):
             h_x = h_x.view(h_x.size(0), h_x.size(1), -1)
 
 
-
-        out = self.aggregator(h_x.squeeze().squeeze(), thetas.squeeze().squeeze())
+        out = self.aggregator(h_x, thetas)
 
 
         # if self.aggregator.nclasses ==  1:
