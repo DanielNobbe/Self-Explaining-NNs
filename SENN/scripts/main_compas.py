@@ -39,7 +39,7 @@ from sklearn.preprocessing import StandardScaler
 # Local imports
 from os.path import dirname, realpath
 from SENN.arglist import parse_args
-from SENN.utils import plot_theta_stability, generate_dir_names
+from SENN.utils import plot_theta_stability, generate_dir_names, plot_dependencies, plot_prob_drop
 from SENN.eval_utils import sample_local_lipschitz
 
 from SENN.models import GSENN
@@ -51,6 +51,7 @@ from SENN.trainers import VanillaClassTrainer, GradPenaltyTrainer
 from robust_interpret.utils import lipschitz_feature_argmax_plot
 # (Added by Lennert) More local imports
 from robust_interpret.explainers import gsenn_wrapper
+import matplotlib.pyplot as plt
 
 class new_wrapper(gsenn_wrapper):
 
@@ -70,10 +71,13 @@ class new_wrapper(gsenn_wrapper):
                 path = save_path + '_' + str(i) + '/'
             else:
                 path = save_path
-            target = targets[i]
+            if targets is not None:
+                target = targets[i]
+            else:
+                target = None
             i += 1
             p_d, att = self.compute_prob_drop(x, target = target, save_path = path,
-              alternative = True)
+              alternative = True, inputs_are_concepts = True)
             # p_d is now theta*h for each concept.
             p_d = p_d.squeeze()
             att = att.squeeze()
@@ -86,7 +90,7 @@ class new_wrapper(gsenn_wrapper):
             # print("attributions: ", atts)
 
             corrs.append(np.corrcoef(p_d, att)[0,1])
-            deps, thetas = self.compute_dependencies(x)
+            deps, thetas = self.compute_dependencies(x, inputs_are_concepts = True)
             altcorrs.append(np.corrcoef(p_d, deps)[0,1])
             if plot_alt_dependencies:
 
@@ -113,7 +117,7 @@ class new_wrapper(gsenn_wrapper):
         # np.corrcoef(drops.flatten(), atts.flatten())
         return corrs, altcorrs
 
-    def compute_prob_drop(self, x, target = None, reference_value = 0, plot = False, save_path = None, alternative = False):
+    def compute_prob_drop(self, x, target = None, reference_value = 0, plot = False, save_path = None, alternative = False, inputs_are_concepts = False):
         """
             This is placed here to prevent having to update the robust_interpret package.
         """
@@ -137,18 +141,20 @@ class new_wrapper(gsenn_wrapper):
         deltas = []
         for i in tqdm(range(h_x.shape[0])):
             x_p = x.clone()
-            # x_p[i] = reference_value # uncomment this to be compatible with uci dataset
+            x_p[i] = reference_value # uncomment this to be compatible with uci dataset #TODO: Make compatible with both compas and mnist
             h_x_p = h_x.clone()
             h_x_p[i] = reference_value
-            # if inputs_are_concepts:
-            #     f_p = self.net(x_p.reshape(1,-1))
-            # else:
-            f_p = self.net.forward(x, h_x = h_x_p,  h_options = 1)
+            if inputs_are_concepts:
+                f_p = self.net(x_p.reshape(1,-1))
+            else:
+                f_p = self.net.forward(x, h_x = h_x_p,  h_options = 1)
             # print("outcome: ", f_p, f)
             delta_i = (f - f_p)[0,pred_class]
             # print("delta_i: ", delta_i)
             deltas.append(delta_i.cpu().detach().numpy())
         prob_drops = np.array(deltas)
+        if isinstance(attributions, torch.Tensor):
+            attributions = attributions.cpu().detach().numpy()
         if alternative:
             attributions_plot_alt = attributions.squeeze() * h_x.cpu().detach().numpy().squeeze()
         attributions_plot = attributions.squeeze()
@@ -178,7 +184,8 @@ class new_wrapper(gsenn_wrapper):
             # Then, use concepts to forward pass through the model
             # if inputs_are_concepts:
         else:
-            x = h_x # model is compute_proba function, not neural model - we need to add output layer to compute probabilities. Not necessary for now TODO
+            h_x = x
+            # x = h_x # model is compute_proba function, not neural model - we need to add output layer to compute probabilities. Not necessary for now TODO
             f   = self.net.forward(x.reshape(1,-1))
         thetas = self(x) # attributions are theta values (i think)
         dependencies = thetas.squeeze() * h_x.cpu().detach().numpy().squeeze()
@@ -317,15 +324,15 @@ def main():
 
     #noise_stability_plots(model, test_tds, cuda = args.cuda, save_path = results_path)
 
-    lips, argmaxes = sample_local_lipschitz(model, test, mode = 2, top_k = 10, max_distance = 3)
+    # lips, argmaxes = sample_local_lipschitz(model, test, mode = 2, top_k = 10, max_distance = 3)
 
-    max_lip = lips.max()
-    imax = np.unravel_index(np.argmax(lips), lips.shape)[0]
-    jmax = argmaxes[imax][0][0]
-    print('Max Lip value: {}, attained for pair ({},{})'.format(max_lip, imax, jmax))
+    # max_lip = lips.max()
+    # imax = np.unravel_index(np.argmax(lips), lips.shape)[0]
+    # jmax = argmaxes[imax][0][0]
+    # print('Max Lip value: {}, attained for pair ({},{})'.format(max_lip, imax, jmax))
 
-    x      = test.tensors[0][imax]
-    argmax = test.tensors[0][jmax]
+    # x      = test.tensors[0][imax]
+    # argmax = test.tensors[0][jmax]
 
     # pred_x = model(Variable(x.view(1,-1), volatile = True)).data
     # att_x = model.thetas.data.squeeze().numpy().squeeze()
