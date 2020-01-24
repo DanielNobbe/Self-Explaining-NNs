@@ -221,7 +221,7 @@ def explain_digit(model, x_raw, x, thresh = 0.5, save_path = None):
     plt.yticks([])
     if save_path:
         plt.savefig(save_path+'_input.pdf',  bbox_inches = 'tight', format='pdf', dpi=300)
-    plt.show()
+    # plt.show()
     y_pred = model(x)
 
     pred_class = np.argmax(y_pred.data.numpy())
@@ -260,7 +260,7 @@ def explain_digit(model, x_raw, x, thresh = 0.5, save_path = None):
 
     if save_path:
         plt.savefig(save_path + '_expl.pdf', bbox_inches = 'tight', format='pdf', dpi=300)
-    plt.show()
+    # plt.show()
 
 def plot_text_explanation(words, values, n_cols = 6, save_path = None):
     import seaborn as sns
@@ -316,7 +316,7 @@ def plot_text_explanation(words, values, n_cols = 6, save_path = None):
     plt.grid('off')
     if save_path:
         plt.savefig(save_path + '_expl.pdf', bbox_inches = 'tight', format='pdf', dpi=300)
-    plt.show()
+    # plt.show()
 
 
 class FeatureInput_Explainer():
@@ -371,7 +371,7 @@ class FeatureInput_Explainer():
                 print('Class:{:5} Neg: {}, Pos: {}'.format(k, ','.join(Neg_Feats), ','.join(Pos_Feats)))
         if save_path:
             plt.savefig(save_path, bbox_inches = 'tight', format='pdf', dpi=300)
-        plt.show()
+        # plt.show()
         print('-'*60)
 
     def _explain_class(self, x_raw, x,k,typ='pos',feat_names = None, thresh = 0.5,recompute=True):
@@ -728,7 +728,7 @@ def concept_grid(model, data_loader, cuda=False, top_k = 6, layout = 'vertical',
 
     if save_path is not None:
         plt.savefig(save_path, bbox_inches = 'tight', format='pdf', dpi=300)
-    plt.show()
+    # plt.show()
     if return_fig:
         return fig, axes
 
