@@ -52,8 +52,8 @@ from SENN.trainers import HLearningClassTrainer, VanillaClassTrainer, GradPenalt
 from SENN.utils import plot_theta_stability, generate_dir_names, noise_stability_plots, concept_grid, plot_prob_drop, plot_dependencies
 from SENN.eval_utils import estimate_dataset_lipschitz
 
-from robust_interpret.explainers import gsenn_wrapper
-from robust_interpret.utils import lipschitz_boxplot, lipschitz_argmax_plot, lipschitz_feature_argmax_plot
+from scripts.robust_interpret.explainers import gsenn_wrapper
+from scripts.robust_interpret.utils import lipschitz_boxplot, lipschitz_argmax_plot, lipschitz_feature_argmax_plot
 
 
 def revert_to_raw(t):
@@ -186,6 +186,9 @@ class new_wrapper(gsenn_wrapper):
             # print("delta_i: ", delta_i)
             deltas.append(delta_i.cpu().detach().numpy())
         prob_drops = np.array(deltas)
+
+        if not type(attributions) is np.ndarray: #Checks if they are both numpy arrays. If not:
+            attributions = attributions.cpu().detach().numpy().squeeze()
         if alternative:
             attributions_plot_alt = attributions.squeeze() * h_x.cpu().detach().numpy().squeeze()
         attributions_plot = attributions.squeeze()
@@ -258,6 +261,7 @@ def main():
     args.nclasses = 10
     args.theta_dim = args.nclasses
 
+   
 
     model_path, log_path, results_path = generate_dir_names('mnist', args)
 
@@ -271,8 +275,6 @@ def main():
         conceptizer  = input_conceptizer()
         args.nconcepts = 28*28 + int(not args.nobias)
     elif args.h_type == 'cnn':
-
-
         #args.nconcepts +=     int(not args.nobias)
         conceptizer  = image_cnn_conceptizer(28*28, args.nconcepts, args.concept_dim) #, sparsity = sparsity_l)
     else:
@@ -359,7 +361,7 @@ def main():
     altcorrelations = np.array([])
     for i, (inputs, targets) in enumerate(test_loader):
             # get the inputs
-            if model.cuda:
+            if args.cuda:
                 inputs, targets = inputs.cuda(), targets.cuda()
             input_var = torch.autograd.Variable(inputs, volatile=True)
             target_var = torch.autograd.Variable(targets)
@@ -380,6 +382,13 @@ def main():
     print("Average alternative correlation:", average_alt_correlation)
     print("Standard deviation of alternative correlations: ", std_alt_correlation)
 
+    box_plot_values = [correlations, altcorrelations]
+
+    box = plt.boxplot(box_plot_values, patch_artist=True, labels=['theta(x)', 'theta(x) h(x)'])
+    colors = ['blue', 'purple']
+    for patch, color in zip(box['boxes'], colors):
+        patch.set_facecolor(color)
+    plt.savefig(results_path + 'faithfulness_box_plot', format = "png", dpi=300)
 
 
     # # #### Debug argmax plot_theta_stability
