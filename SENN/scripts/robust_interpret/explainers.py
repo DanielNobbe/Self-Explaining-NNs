@@ -781,9 +781,6 @@ class gsenn_wrapper(explainer_wrapper):
             else:
                 expl_target_class = y
 
-            print("HIER BRO")
-            print(expl_target_class.shape)
-            print(expl_target_class.cpu().view(-1,1).unsqueeze(2).repeat(1,natt,nclass).shape)
             # Might need complementary theta # TODO:
             attributions = attrib_mat.squeeze()
 
