@@ -429,6 +429,10 @@ def plot_dependencies(dictionary_values,
 
     # get maximum
     maximum_value = np.absolute(np.array(coefficient_values)).max()
+
+    if maximum_value == 0:
+        maximum_value = 0.0001
+
     if scale_values:
         coefficient_values = ((np.array(coefficient_values) / maximum_value) * 100)
 
