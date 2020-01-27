@@ -55,7 +55,7 @@ def generate_dir_names(dataset, args, make = True):
     model_path     = os.path.join(args.model_path, dataset, suffix)
     log_path       = os.path.join(args.log_path, dataset, suffix)
     results_path   = os.path.join(args.results_path, dataset, suffix)
-    
+
     if args.lisa == 1:
         model_path = os.path.join('lisa_output', 'models', dataset, suffix)
 
@@ -429,6 +429,10 @@ def plot_dependencies(dictionary_values,
 
     # get maximum
     maximum_value = np.absolute(np.array(coefficient_values)).max()
+
+    if maximum_value == 0:
+        maximum_value = 0.0001
+
     if scale_values:
         coefficient_values = ((np.array(coefficient_values) / maximum_value) * 100)
 
@@ -617,8 +621,8 @@ def concept_grid(model, data_loader, cuda=False, top_k = 6, layout = 'vertical',
             data, target = data.cuda(), target.cuda()
         if len(data.size()) == 3:
                 data = data.unsqueeze(dim = 1)
-        elif len(data.size()) != 4:
-                print("Handling for number of dims other than 3 or 4 not implemented.")
+        # elif len(data.size()) != 4:
+        #         print("Handling for number of dims other than 3 or 4 not implemented.")
         output = model(data)
         concepts = model.concepts.data
         #pdb.set_trace()
