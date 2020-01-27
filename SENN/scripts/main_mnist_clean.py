@@ -57,6 +57,7 @@ from robust_interpret.utils import lipschitz_boxplot, lipschitz_argmax_plot, lip
 from random import sample
 from tqdm import tqdm
 from collections import defaultdict
+import itertools
 
 
 def load_mnist_data(valid_size=0.1, shuffle=True, random_seed=2008, batch_size = 64,
@@ -123,11 +124,36 @@ def parse_args():
 
     return args
 
-def eval_stability(test_tds, model):
+def eval_stability_2(test_tds, expl, scale, our_method=False):
+	distances = []
 
-    distances = defaultdict(list)
+	for i in tqdm(range(1000)):
+		x = Variable(test_tds[i][0].view(1,1,28,28), volatile = True)
+		h_x = expl.net.forward(x, h_options = -1).data.numpy().squeeze()
+		theta = expl(x)[0]
+		if our_method:
+			deps = np.multiply(theta, h_x)
+		else:
+			deps = theta
 
-    scale = 0.5
+		# Add noise to sample and repeat
+		noise = Variable(scale*torch.randn(x.size()), volatile = True)
+		h_x = expl.net.forward(noise, h_options = -1).data.numpy().squeeze()
+		theta = expl(noise)[0]
+		if our_method:
+			deps_noise = np.multiply(theta, h_x)
+		else:
+			deps_noise = theta
+
+		dist = np.linalg.norm(deps - deps_noise)
+		distances.append(dist)
+
+	return distances
+
+def eval_stability(test_tds, model, scale):
+
+    #distances = defaultdict(list)
+    distances = []
 
     for i in tqdm(range(1000)):
 
@@ -157,9 +183,8 @@ def eval_stability(test_tds, model):
 
 	    dist = np.linalg.norm(deps - deps_noise)
 
-	    distances[true_class].append(dist)
-
-    print(distances)
+	    #distances[true_class].append(dist)
+	    distances.append(dist)
 
     return distances
 
@@ -175,6 +200,7 @@ def main():
     train_loader, valid_loader, test_loader, train_tds, test_tds = load_mnist_data(
                         batch_size=args.batch_size, num_workers=args.num_workers
                         )
+
 
     # Set h_type 
     if args.h_type == 'input':
@@ -246,8 +272,50 @@ def main():
     # noise_stability_plots(model, test_tds, cuda = args.cuda, save_path = results_path)
 
     # Evaluate Stability
-    distances = eval_stability(test_tds, model)
+    noises = np.arange(0, 1, 0.05)
+    print(noises)
+
+    distance_dict = {}
+
+    for noise in noises:
+    	print(noise)
+    	distances = eval_stability_2(test_tds, expl, noise, True)
+    	distance_dict[noise] = distances
+
+    # (pickle.dump(test_tds, open("test_tds.pkl", "wb")))
+    (pickle.dump(distance_dict, open(results_path + 'our_method_stability_distances.pkl', "wb")))
     
 if __name__ == '__main__':
-	main()
+	# main()
 
+	with open('stability_distances.pkl', "rb") as input_file:
+		noises = np.arange(0, 1, 0.05)
+		distances = pickle.load(input_file)
+
+		means = [np.mean(distances[noise]) for noise in noises]
+		stds = [np.std(distances[noise]) for noise in noises]
+
+		means_min = [means[i] - stds[i] for i in range(len(means))]
+		means_max = [means[i] + stds[i] for i in range(len(means))]
+
+	with open('our_method_stability_distances.pkl', "rb") as input_file:
+		distances_2 = pickle.load(input_file)
+
+		means_2 = [np.mean(distances_2[noise]) for noise in noises]
+		stds_2 = [np.std(distances_2[noise]) for noise in noises]
+
+		means_min_2 = [means_2[i] - stds_2[i] for i in range(len(means_2))]
+		means_max_2 = [means_2[i] + stds_2[i] for i in range(len(means_2))]
+
+		fig, ax = plt.subplots(1)
+
+		ax.plot(noises, means, lw=2, label='theta(x)', color='blue')
+		ax.plot(noises, means_2, lw=2, label='theta(x)^T h(x)', color='yellow')
+		ax.fill_between(noises, means_max, means_min, facecolor='blue', alpha=0.3)
+		ax.fill_between(noises, means_max_2, means_min_2, facecolor='yellow', alpha=0.3)
+		ax.set_title('Stability')
+		ax.legend(loc='upper left')
+		ax.set_xlabel('Added noise')
+		ax.set_ylabel('Norm of relevance coefficients')
+		ax.grid()
+		plt.show()

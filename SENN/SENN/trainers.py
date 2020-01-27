@@ -72,9 +72,9 @@ def compute_jacobian_sum(x, fx):
 
 def compute_jacobian(x, fx):
     # Ideas from https://discuss.pytorch.org/t/clarification-using-backward-on-non-scalars/1059/2
-    
-    
-    
+
+
+
     b = x.size(0)
     n = x.size(-1)
     # if fx.dim() > 1:
@@ -141,7 +141,7 @@ class ClassificationTrainer():
         if args.h_type != 'input':
             # Means conceptizer will be trained, need reconstruction loss for it
             self.learning_h = True
-            self.h_reconst_criterion = F.mse_loss  #nn.MSELoss() 
+            self.h_reconst_criterion = F.mse_loss  #nn.MSELoss()
             # if args.h_sparsity != -1:
             #     print('Will enforce sparsity on h')
             self.h_sparsity = args.h_sparsity
@@ -196,7 +196,7 @@ class ClassificationTrainer():
                     'state_dict': self.model.state_dict(),
                     'best_prec1': best_prec1,
                     'optimizer' : self.optimizer.state_dict(),
-                    'model': self.model  
+                    'model': self.model
                  }, is_best, save_path)
 
         print('Training done')
@@ -238,8 +238,8 @@ class ClassificationTrainer():
             if len(inputs.size()) == 3:
                 inputs = inputs.unsqueeze(dim = 1)
                 # targets = targets.unsqueeze(dim = 1)
-            elif len(inputs.size()) != 4:
-                print("Handling for number of dims other than 3 or 4 not implemented.")
+            # elif len(inputs.size()) != 4:
+            #     print("Handling for number of dims other than 3 or 4 not implemented.")
 
 
             # get the inputs
@@ -247,13 +247,13 @@ class ClassificationTrainer():
                 inputs, targets = inputs.cuda(), targets.cuda()
 
             inputs, targets = Variable(inputs), Variable(targets)
-            
+
             if self.reset_lstm:
                 self.model.zero_grad()
                 self.model.parametrizer.hidden = self.model.parametrizer.init_hidden()# detaching it from its history on the last instance.
             outputs, loss, loss_dict = self.train_batch(inputs, targets)
             loss_dict['iter'] = i + (len(train_loader)*epoch)
-            
+
             # the dict here
             self.loss_history.append(loss_dict)
 
@@ -304,11 +304,11 @@ class ClassificationTrainer():
             # get the inputs
             device = inputs.device
             inputs = inputs.type(torch.FloatTensor).to(device)  # only Tensors of floating point dtype can require gradients for EMNIST
-            targets = targets.type(torch.LongTensor).to(device)
+            targets = targets.type(torch.FloatTensor).to(device)
             if len(inputs.size()) == 3:
                 inputs = inputs.unsqueeze(dim = 1)
-            elif len(inputs.size()) != 4:
-                print("Handling for number of dims other than 3 or 4 not implemented.")
+            # elif len(inputs.size()) != 4:
+            #     print("Handling for number of dims other than 3 or 4 not implemented.")
 
             if self.cuda:
                 inputs, targets = inputs.cuda(), targets.cuda()
@@ -603,7 +603,7 @@ class GradPenaltyTrainer(ClassificationTrainer):
         #update1 = model.weight.grad.data.clone()
 
         if self.penalty_type == 1:
-            
+
             #raise NotImplementedError('Fix this')
             #  || df/dx - theta ||)^2
             #dTh = self.compute_parametrizer_jacobian(inputs)
@@ -686,7 +686,7 @@ class GradPenaltyTrainer(ClassificationTrainer):
     #         ( || df/dx - theta ||)^2
     #
     #     """
-    #     
+    #
     #     g = torch.autograd.grad(outputs=y.mean(),inputs=x, create_graph=True)[0]
     #     print(g.size())
     #     print(net.thetas.size())
@@ -712,7 +712,7 @@ class GradPenaltyTrainer(ClassificationTrainer):
     #
     #              || dtheta/dx  || / || dh / dx ||
     #     """
-    #     
+    #
     #     # the variables not the data
     #     thetas = model.thetas #model.parametrizer(x)
     #     # if True:
@@ -742,7 +742,7 @@ class GradPenaltyTrainer(ClassificationTrainer):
     #              || dh/dx*theta - df/dx  || =  || dth/dx*h  ||
     #
     #     """
-    #     
+    #
     #     # the variables not the data
     #     thetas = model.thetas #model.parametrizer(x)
     #     # if True:
@@ -783,7 +783,7 @@ class HLearningClassTrainer(ClassificationTrainer):
     def __init__(self, model, args):
         super().__init__(model, args)
         self.sparsity = args.h_sparsity
-        self.reconst_criterion = nn.MSELoss() 
+        self.reconst_criterion = nn.MSELoss()
 
     def train_batch(self, inputs, targets):
         """ inputs, targets already variables """
@@ -851,7 +851,7 @@ class GradPenaltyTrainer_old(ClassificationTrainer):
         return pred, loss
 
     def calc_gradient_penalty(self, net,x,y):
-        
+
         g = torch.autograd.grad(outputs=y.mean(),inputs=x, create_graph=True)[0]
         print(g.size())
         print(net.thetas.size())
@@ -916,7 +916,7 @@ class GradPenaltyTrainer3(ClassificationTrainer):
         return pred, loss
 
     def calc_gradient_penalty(self,model,x,y, norm = 1):
-        
+
         # the variables not the data
         thetas = model.thetas #model.parametrizer(x)
         # if True:
@@ -1147,4 +1147,3 @@ class HLearningTrainer():
         print('\nEvaluation: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
             test_loss, correct, len(test_loader.dataset),
             100. * correct / len(test_loader.dataset)))
-

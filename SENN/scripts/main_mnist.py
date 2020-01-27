@@ -123,7 +123,7 @@ class new_wrapper(gsenn_wrapper):
 
             # print("attributions: ", atts)
 
-            corrs.append(np.corrcoef(p_d, att)[0,1]) 
+            corrs.append(np.corrcoef(p_d, att)[0,1])
             deps, thetas = self.compute_dependencies(x)
             altcorrs.append(np.corrcoef(p_d, deps)[0,1])
             if plot_alt_dependencies:
@@ -141,7 +141,7 @@ class new_wrapper(gsenn_wrapper):
                         os.mkdir(plot_path)
                     fig.savefig(plot_path + str(i), format = "png", dpi=300)
             plt.close('all')
-            
+
         corrs = np.array(corrs)
         altcorrs = np.array(altcorrs)
         # pdb.set_trace()
@@ -153,7 +153,7 @@ class new_wrapper(gsenn_wrapper):
 
     def compute_prob_drop(self, x, target = None, reference_value = 0, plot = False, save_path = None, inputs_are_concepts = True, alternative = False):
         """
-            This is placed here to prevent having to update the robust_interpret package. 
+            This is placed here to prevent having to update the robust_interpret package.
         """
         # First, turn inputs into concepts
         if not inputs_are_concepts:
@@ -258,6 +258,7 @@ def main():
     args.nclasses = 10
     args.theta_dim = args.nclasses
 
+
     model_path, log_path, results_path = generate_dir_names('mnist', args)
 
     print("Model path out", model_path)
@@ -270,8 +271,8 @@ def main():
         conceptizer  = input_conceptizer()
         args.nconcepts = 28*28 + int(not args.nobias)
     elif args.h_type == 'cnn':
-        
-        
+
+
         #args.nconcepts +=     int(not args.nobias)
         conceptizer  = image_cnn_conceptizer(28*28, args.nconcepts, args.concept_dim) #, sparsity = sparsity_l)
     else:
@@ -285,6 +286,10 @@ def main():
 
     model        = GSENN(conceptizer, parametrizer, aggregator) #, learn_h = args.train_h)
 
+    numberr = 0
+    for i, (input, targets) in enumerate(test_loader):
+        numberr += 1
+        print("Number is: ", numberr)
 
     if args.load_model:
         checkpoint = torch.load(os.path.join(model_path,'model_best.pth.tar'), map_location=lambda storage, loc: storage)
@@ -317,7 +322,7 @@ def main():
 
     All_Results = {}
 
-    
+
 
 
     ### 1. Single point lipshiz estimate via black box optim
@@ -347,7 +352,7 @@ def main():
     # x_raw = test_loader.dataset.test_data[:args.batch_size,:,:]
     # attr = expl(x, x_raw = x_raw, show_plot = True)
     # #pdb.set_trace()
-    
+
 
     ### Consistency analysis
     correlations = np.array([])
@@ -374,7 +379,7 @@ def main():
     print("Standard deviation of correlations: ", std_correlation)
     print("Average alternative correlation:", average_alt_correlation)
     print("Standard deviation of alternative correlations: ", std_alt_correlation)
-            
+
 
 
     # # #### Debug argmax plot_theta_stability
@@ -432,7 +437,7 @@ def main():
     #     # print(asd.asd)
 
     # noise_stability_plots(model, test_tds, cuda = args.cuda, save_path = results_path)
-    
+
     # ### 3. Local lipschitz estimate over multiple samples with Black BOx Optim
     # do_bb_stability = True # Aangepast, was: True
     # if do_bb_stability:
@@ -447,7 +452,7 @@ def main():
     #     pdb.set_trace()
     #     Stability_dict = {'lips': lips}
     #     pickle.dump(Stability_dict, open(results_path + '_stability_blackbox.pkl', "wb"))
-    #     All_Results['stability_blackbox'] = lips 
+    #     All_Results['stability_blackbox'] = lips
 
 
     # add concept plot
@@ -455,7 +460,7 @@ def main():
 
     pickle.dump(All_Results, open(results_path + '_combined_metrics.pkl', "wb")) # Aangepast: .pkl was .format(dataname)
 
-    
+
 
 
     # args.epoch_stats = epoch_stats

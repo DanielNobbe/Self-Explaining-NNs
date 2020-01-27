@@ -144,7 +144,7 @@ def parse_args():
 
     # misc
     parser.add_argument('--print_freq' , type=int, default=10, help='print frequency during train (in batches)')
-
+    parser.add_argument('--lisa', type=int, default = 0, help='Execution on Lisa')
 
     args = parser.parse_args()
 
