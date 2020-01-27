@@ -89,38 +89,34 @@ class new_wrapper(gsenn_wrapper):
             #assert len(p_d).shape[0] == atts.shape[0], "Attributions has wrong size"
             #pdb.set_trace()
 
-            # print("attributions: ", atts)
+            
+            if not np.all(p_d == 0):
+                corrs.append(np.corrcoef(p_d, att)[0,1])
+                deps, thetas = self.compute_dependencies(x, inputs_are_concepts = True)
+                altcorrs.append(np.corrcoef(p_d, deps)[0,1])
+                if plot_alt_dependencies:
 
-            corrs.append(np.corrcoef(p_d, att)[0,1])
-            deps, thetas = self.compute_dependencies(x, inputs_are_concepts = True)
-            altcorrs.append(np.corrcoef(p_d, deps)[0,1])
-            if plot_alt_dependencies:
 
-
-                classes = ['C' + str(i) for i in range(p_d.shape[0])]
-                deps_to_plot = dict(zip(classes, deps))
-                thetas_to_plot = dict(zip(classes, thetas[0]))
-                fig, ax = plt.subplots(1, 2)
-                if targets is not None:
-                    title = 'Combined dependencies, target = ' + str(target.item())
-                else:
-                    title = 'Combined dependencies'
-                A = plot_dependencies(deps_to_plot, title= title , sort_rows = False, ax = ax[0])
-                B = plot_dependencies(thetas_to_plot, title='Theta dependencies', sort_rows = False, ax = ax[1])
-                if not path == None:
-                    plot_path = path + '/dependencies/'
-                    if not os.path.isdir(plot_path):
-                        os.mkdir(plot_path)
-                    fig.savefig(plot_path + str(i), format = "png", dpi=300)
+                    classes = ['C' + str(i) for i in range(p_d.shape[0])]
+                    deps_to_plot = dict(zip(classes, deps))
+                    thetas_to_plot = dict(zip(classes, thetas[0]))
+                    fig, ax = plt.subplots(1, 2)
+                    if targets is not None:
+                        title = 'Combined dependencies, target = ' + str(target.item())
+                    else:
+                        title = 'Combined dependencies'
+                    A = plot_dependencies(deps_to_plot, title= title , sort_rows = False, ax = ax[0])
+                    B = plot_dependencies(thetas_to_plot, title='Theta dependencies', sort_rows = False, ax = ax[1])
+                    if not path == None:
+                        plot_path = path + '/dependencies/'
+                        if not os.path.isdir(plot_path):
+                            os.mkdir(plot_path)
+                        fig.savefig(plot_path + str(i), format = "png", dpi=300)
             plt.close('all')
 
         corrs = np.array(corrs)
         altcorrs = np.array(altcorrs)
-        # pdb.set_trace()
-        # drops = np.stack(drops)
-        # atts  = np.stack(atts)
-        #
-        # np.corrcoef(drops.flatten(), atts.flatten())
+
         return corrs, altcorrs
 
     def compute_prob_drop(self, x, target = None, reference_value = 0, plot = False, save_path = None, alternative = False, inputs_are_concepts = False):
@@ -156,9 +152,7 @@ class new_wrapper(gsenn_wrapper):
                 f_p = self.net(x_p.reshape(1,-1))
             else:
                 f_p = self.net.forward(x, h_x = h_x_p,  h_options = 1)
-            # print("outcome: ", f_p, f)
             delta_i = (f - f_p)[0,pred_class]
-            # print("delta_i: ", delta_i)
             deltas.append(delta_i.cpu().detach().numpy())
         prob_drops = np.array(deltas)
         if isinstance(attributions, torch.Tensor):
@@ -187,7 +181,6 @@ class new_wrapper(gsenn_wrapper):
                 # x = x.type(torch.FloatTensor)
                 x = x.unsqueeze(dim = 0)
                 h_x = self.net.forward(x, h_options = -1)
-                # print("h_x: ",h_x)
                 f = self.net.forward(x, h_x = h_x, h_options = 1)
             # Then, use concepts to forward pass through the model
             # if inputs_are_concepts:
