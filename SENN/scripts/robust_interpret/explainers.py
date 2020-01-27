@@ -781,9 +781,12 @@ class gsenn_wrapper(explainer_wrapper):
             else:
                 expl_target_class = y
 
-            # Might need complementary theta # TODO:
-            attributions = attrib_mat.gather(2,expl_target_class.cpu().view(-1,1).unsqueeze(2).repeat(1,natt,nclass))[:,:,0].numpy()
 
+            if self.input_type == 'feature':
+                attributions = attrib_mat.cpu().view(1,-1).numpy()
+                print(attributions)
+            else:
+                attributions = attrib_mat.gather(2,expl_target_class.cpu().view(-1,1).unsqueeze(2).repeat(1,natt,nclass))[:,:,0].numpy()
 
         if self.skip_bias and getattr(self.net.conceptizer, "add_bias", None):
             attributions = attributions[...,:-1]

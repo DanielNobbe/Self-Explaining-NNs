@@ -222,10 +222,11 @@ class GSENN(nn.Module):
             # .mul(self.l1weight) # Save sparsity loss, will be used by trainer
             self.h_norm_l1 = h_x.norm(p=1)
         elif h_options == False:
-            conceptized = self.conceptizer(
+            h_x = self.conceptizer(
                 autograd.Variable(x.data, requires_grad=False))
-            if type(conceptized) is tuple:
-                h_x, x_tilde = conceptized
+            if type(h_x) is tuple:
+                h_x, x_tilde = h_x
+
 
 
         self.concepts = h_x  # .data
