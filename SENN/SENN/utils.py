@@ -748,7 +748,7 @@ def plot_prob_drop(attribs, prob_drop, save_path = None):
 
     color1 = '#377eb8'
     ax1.bar(ind+width+0.35, attribs, 0.45, color=color1)
-    ax1.set_ylabel(r'Feature Relevance $\theta(x)_i$',color=color1, fontsize = 14)
+    ax1.set_ylabel(r'Feature Relevance',color=color1, fontsize = 14)
     #ax1.set_ylim(-1,1)
     ax1.set_xlabel('Feature')
     ax1.tick_params(axis='y', colors=color1)
