@@ -206,16 +206,14 @@ class GSENN(nn.Module):
     def forward(self, x, h_x = None, h_options = False):
         #DEBUG = True
         # Three options for h - normal procedure, returns h_x from x (False), input from h (1) and input from x - output h (-1)
-        # input from h: needs both h_x and x as input. Latter to calculate theta
-        # Output h: returns both h_x and x (x is necessary to finish forward pass later)
+        # 1: input from h: needs both h_x and x as input. Latter to calculate theta
+        # -1: Output h: returns both h_x and x (x is necessary to finish forward pass later)
         # In essence, in the default way we do a forward pass for a model that takes the concepts
         # as inputs. In the other two ways, we generate the concepts, and allow the model
         # to do a forward pass based on the concepts, if the model normally takes raw data as input.
         if DEBUG:
             print('Input to GSENN:', x.size())
-        # Get interpretable features
-        #h_x         = self.encoder(x.view(x.size(0), -1)).view(-1, self.natoms, self.dout)
-        #self.recons = self.decoder(h_x.view(-1, self.dout*self.natoms))
+    
         if self.learning_H and h_options == -1:
             h_x, x_tilde = self.conceptizer(x)
             self.recons = x_tilde
@@ -224,10 +222,9 @@ class GSENN(nn.Module):
             # .mul(self.l1weight) # Save sparsity loss, will be used by trainer
             self.h_norm_l1 = h_x.norm(p=1)
         elif h_options == False:
-            h_x = self.conceptizer(
+            h_x, x_tilde = self.conceptizer(
                 autograd.Variable(x.data, requires_grad=False))
-        # elif h_options == False:
-        #     h_x = x # Other option is 1 - h_x is given
+
 
         self.concepts = h_x  # .data
 
@@ -248,7 +245,6 @@ class GSENN(nn.Module):
 
         if DEBUG:
             print('Theta: ', thetas.size())
-
         if len(h_x.size()) == 4:
             # Concepts are two-dimensional, so flatten
             h_x = h_x.view(h_x.size(0), h_x.size(1), -1)
