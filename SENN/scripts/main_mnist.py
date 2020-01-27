@@ -139,7 +139,7 @@ class new_wrapper(gsenn_wrapper):
                     plot_path = save_path + '/dependencies/'
                     if not os.path.isdir(plot_path):
                         os.mkdir(plot_path)
-                    fig.savefig(plot_path + str(i), format = "png", dpi=300)
+                    fig.savefig(plot_path + str(i) + '.png', format = "png", dpi=300)
             plt.close('all')
 
         corrs = np.array(corrs)
@@ -384,7 +384,7 @@ def main():
     colors = ['blue', 'purple']
     for patch, color in zip(box['boxes'], colors):
         patch.set_facecolor(color)
-    plt.savefig(results_path + 'faithfulness_box_plot', format = "png", dpi=300)
+    plt.savefig(results_path + 'faithfulness_box_plot.png', format = "png", dpi=300)
 
 
     # # #### Debug argmax plot_theta_stability
@@ -461,7 +461,7 @@ def main():
 
 
     # add concept plot
-    concept_grid(model, test_loader, cuda = args.cuda, top_k = 10, save_path = results_path + '/concept_grid.pdf')
+    concept_grid(model, test_loader, cuda = args.cuda, top_k = 10, save_path = results_path + '/concept_grid.png')
 
     pickle.dump(All_Results, open(results_path + '_combined_metrics.pkl', "wb")) # Aangepast: .pkl was .format(dataname)
 
