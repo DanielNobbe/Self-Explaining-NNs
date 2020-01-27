@@ -321,7 +321,13 @@ def main():
     print('Valid accuracy: {:8.2f}'.format(valid_acc))
     print('Test accuracy: {:8.2f}'.format(test_acc))
 
+    box_plot_values = [correlations, altcorrelations]
 
+    box = plt.boxplot(box_plot_values, patch_artist=True, labels=['theta(x)', 'theta(x) h(x)'])
+    colors = ['blue', 'purple']
+    for patch, color in zip(box['boxes'], colors):
+        patch.set_facecolor(color)
+    plt.savefig(results_path + 'faithfulness_box_plot', format = "png", dpi=300)
 
     #noise_stability_plots(model, test_tds, cuda = args.cuda, save_path = results_path)
 
