@@ -304,7 +304,10 @@ class ClassificationTrainer():
             # get the inputs
             device = inputs.device
             inputs = inputs.type(torch.FloatTensor).to(device)  # only Tensors of floating point dtype can require gradients for EMNIST
-            targets = targets.type(torch.FloatTensor).to(device)
+            if self.prediction_criterion is F.cross_entropy:
+                targets = targets.type(torch.LongTensor).to(device)
+            else:
+                targets = targets.type(torch.FloatTensor).to(device)
             if len(inputs.size()) == 3:
                 inputs = inputs.unsqueeze(dim = 1)
             # elif len(inputs.size()) != 4:
