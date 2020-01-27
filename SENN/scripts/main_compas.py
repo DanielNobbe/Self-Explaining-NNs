@@ -52,6 +52,8 @@ from robust_interpret.utils import lipschitz_feature_argmax_plot
 # (Added by Lennert) More local imports
 from robust_interpret.explainers import gsenn_wrapper
 import matplotlib.pyplot as plt
+import warnings
+warnings.simplefilter(action='ignore', category=(FutureWarning, UserWarning))
 
 class new_wrapper(gsenn_wrapper):
 
@@ -99,10 +101,14 @@ class new_wrapper(gsenn_wrapper):
                 deps_to_plot = dict(zip(classes, deps))
                 thetas_to_plot = dict(zip(classes, thetas[0]))
                 fig, ax = plt.subplots(1, 2)
-                A = plot_dependencies(deps_to_plot, title= 'Combined dependencies, target = ' + str(target.item()), sort_rows = False, ax = ax[0])
+                if targets is not None:
+                    title = 'Combined dependencies, target = ' + str(target.item())
+                else:
+                    title = 'Combined dependencies'
+                A = plot_dependencies(deps_to_plot, title= title , sort_rows = False, ax = ax[0])
                 B = plot_dependencies(thetas_to_plot, title='Theta dependencies', sort_rows = False, ax = ax[1])
-                if not save_path == None:
-                    plot_path = save_path + '/dependencies/'
+                if not path == None:
+                    plot_path = path + '/dependencies/'
                     if not os.path.isdir(plot_path):
                         os.mkdir(plot_path)
                     fig.savefig(plot_path + str(i), format = "png", dpi=300)
@@ -137,6 +143,8 @@ class new_wrapper(gsenn_wrapper):
         # else:
         #     f = self.model.forward(x.reshape(1,-1), h_x = h_x,  h_options = 1)
         pred_class = f.argmax()
+        # else:
+        #     pred_class = int(target.item()) # Add this to MNIST implementation
         attributions = self(x, y = target) # attributions are theta values (i think)
         deltas = []
         for i in tqdm(range(h_x.shape[0])):
@@ -390,8 +398,10 @@ def main():
             corrs, altcorrs = expl.compute_dataset_consistency(input_var, targets = target_var, inputs_are_concepts = False, save_path = save_path)
             correlations = np.append(correlations, corrs)
             altcorrelations = np.append(altcorrelations, altcorrs)
-            if i > 2:
-                break
+            print("i: ", i)
+            # if i > 0:
+            #     print("Breaking out of loop")
+            #     break
     average_correlation = np.sum(correlations)/len(correlations)
     std_correlation = np.std(correlations)
     average_alt_correlation = np.sum(altcorrelations)/len(altcorrelations)
@@ -413,24 +423,6 @@ def main():
     #                     verbose = False)
 
     # Iteratively perform faithfulness analysis on test inputs
-
-    for i, (inputs, targets) in enumerate(test_loader):
-        #print(inputs)
-        # print(targets)
-        # get inputs
-        # if model.cuda:
-        #     inputs, targets = input.cuda(), targets.cuda()
-
-        input_var = torch.autograd.Variable(inputs, volatile = True)
-
-        save_dir = results_path + '/faithfulness/'
-        if not os.path.isdir(save_dir):
-            os.makedirs(save_dir)
-
-        save_path = os.path.join(save_dir, str(i) + 'test')
-        corrs = expl.compute_dataset_consistency(input_var,
-         save_path = save_path)
-
 
 
 if __name__ == "__main__":
