@@ -52,8 +52,8 @@ from SENN.trainers import HLearningClassTrainer, VanillaClassTrainer, GradPenalt
 from SENN.utils import plot_theta_stability, generate_dir_names, noise_stability_plots, concept_grid, plot_prob_drop, plot_dependencies
 from SENN.eval_utils import estimate_dataset_lipschitz
 
-from scripts.robust_interpret.explainers import gsenn_wrapper
-from scripts.robust_interpret.utils import lipschitz_boxplot, lipschitz_argmax_plot, lipschitz_feature_argmax_plot
+from robust_interpret.explainers import gsenn_wrapper
+from robust_interpret.utils import lipschitz_boxplot, lipschitz_argmax_plot, lipschitz_feature_argmax_plot
 
 
 def revert_to_raw(t):
@@ -288,11 +288,6 @@ def main():
 
     model        = GSENN(conceptizer, parametrizer, aggregator) #, learn_h = args.train_h)
 
-    numberr = 0
-    for i, (input, targets) in enumerate(test_loader):
-        numberr += 1
-        print("Number is: ", numberr)
-
     if args.load_model:
         checkpoint = torch.load(os.path.join(model_path,'model_best.pth.tar'), map_location=lambda storage, loc: storage)
         checkpoint.keys()
@@ -373,6 +368,7 @@ def main():
             altcorrelations = np.append(altcorrelations, altcorrs)
             if i > 2:
                 break
+    
     average_correlation = np.sum(correlations)/len(correlations)
     std_correlation = np.std(correlations)
     average_alt_correlation = np.sum(altcorrelations)/len(altcorrelations)
