@@ -206,8 +206,9 @@ class GSENN(nn.Module):
     def forward(self, x, h_x = None, h_options = False):
         #DEBUG = True
         # Three options for h - normal procedure, returns h_x from x (False), input from h (1) and input from x - output h (-1)
+        # False: receives pure concepts as input, like in COMPAS
         # 1: input from h: needs both h_x and x as input. Latter to calculate theta
-        # -1: Output h: returns both h_x and x (x is necessary to finish forward pass later)
+        # -1: Output h: returns h_x and x
         # In essence, in the default way we do a forward pass for a model that takes the concepts
         # as inputs. In the other two ways, we generate the concepts, and allow the model
         # to do a forward pass based on the concepts, if the model normally takes raw data as input.

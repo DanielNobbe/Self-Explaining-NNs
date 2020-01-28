@@ -155,14 +155,14 @@ def plot_distribution_h(test_tds, expl, plot_type='hx', results_path=False):
     values = []
     for i in tqdm(range(10000)):
         x = Variable(test_tds.dataset[i][0].view(1,1,28,28), volatile = True)
-        if plot_type == 'h(x)':
-            h_x = expl.net.forward(x, h_options = -1).squeeze()
+        if plot_type == 'hx':
+            h_x = expl.net.forward(x, h_options = -1).squeeze().detach().numpy()
             values.append(h_x)
-        elif plot_type == 'theta(x)':
+        elif plot_type == 'thetax':
             theta = expl(x)[0]
             values.append(theta)
-        elif plot_type == 'theta(x)h(x)':
-            h_x = expl.net.forward(x, h_options = -1).squeeze()
+        elif plot_type == 'thetaxhx':
+            h_x = expl.net.forward(x, h_options = -1).squeeze().detach().numpy()
             theta = expl(x)[0]
             values.append(np.multiply(theta, h_x))
 
@@ -182,13 +182,11 @@ def plot_distribution_h(test_tds, expl, plot_type='hx', results_path=False):
         ytitle = 'p(theta(x)^T h(x)'
         plot_color = 'purple'
 
-    print('len values', len(values))
     plt.hist(values, color = plot_color, edgecolor = '#CCE6FF', bins=20)
     plt.xlabel(xtitle)
     plt.ylabel(ytitle)
     if results_path:
         plt.savefig(results_path + '/histogram' + plot_type + '.png', format = "png", dpi=300)
-
 
 
 def main():
@@ -273,20 +271,21 @@ def main():
     # noise_stability_plots(model, test_tds, cuda = args.cuda, save_path = results_path)
 
     # Make histogram 
-    plot_distribution_h(test_loader, expl, 'thetaxhx', results_path=results_path)
-    plot_distribution_h(test_loader, expl, 'thetax', results_path=results_path)
-    plot_distribution_h(test_loader, expl, 'hx', results_path=results_path)
+    if args.demo:
+        plot_distribution_h(test_loader, expl, 'thetaxhx', results_path=results_path)
+        plot_distribution_h(test_loader, expl, 'thetax', results_path=results_path)
+        plot_distribution_h(test_loader, expl, 'hx', results_path=results_path)
+        return
+    else:
+        noises = np.arange(0, 0.21, 0.02)
+        dist_dict, dist_dict_2 = {}, {}
+        for noise in noises:
+            distances = eval_stability_2(test_loader, expl, noise, False)
+            distances_2 = eval_stability_2(test_loader, expl, noise, True)
+            dist_dict[noise] = distances
+            dist_dict_2[noise] = distances_2
 
-
-    noises = np.arange(0, 0.21, 0.02)
-    dist_dict, dist_dict_2 = {}, {}
-    for noise in noises:
-        distances = eval_stability_2(test_loader, expl, noise, False)
-        distances_2 = eval_stability_2(test_loader, expl, noise, True)
-        dist_dict[noise] = distances
-        dist_dict_2[noise] = distances_2
-
-    return dist_dict, dist_dict_2, noises
+        return dist_dict, dist_dict_2, noises
 
     # (pickle.dump(test_tds, open("test_tds.pkl", "wb")))
     # (pickle.dump(distance_dict, open(results_path + 'our_method_stability_distances.pkl', "wb")))
@@ -295,34 +294,36 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    # main()
+    
+     
+    output = main()
+    if type(output) == tuple:
+        distances, distances_2, noises = output
+        means = [np.mean(distances[noise]) for noise in noises]
+        stds = [np.std(distances[noise]) for noise in noises]
 
-    distances, distances_2, noises = main()
+        means_min = [means[i] - stds[i] for i in range(len(means))]
+        means_max = [means[i] + stds[i] for i in range(len(means))]
 
-    means = [np.mean(distances[noise]) for noise in noises]
-    stds = [np.std(distances[noise]) for noise in noises]
+        means_2 = [np.mean(distances_2[noise]) for noise in noises]
+        stds_2 = [np.std(distances_2[noise]) for noise in noises]
 
-    means_min = [means[i] - stds[i] for i in range(len(means))]
-    means_max = [means[i] + stds[i] for i in range(len(means))]
+        means_min_2 = [means_2[i] - stds_2[i] for i in range(len(means_2))]
+        means_max_2 = [means_2[i] + stds_2[i] for i in range(len(means_2))]
 
-    means_2 = [np.mean(distances_2[noise]) for noise in noises]
-    stds_2 = [np.std(distances_2[noise]) for noise in noises]
+        fig, ax = plt.subplots(1)
 
-    means_min_2 = [means_2[i] - stds_2[i] for i in range(len(means_2))]
-    means_max_2 = [means_2[i] + stds_2[i] for i in range(len(means_2))]
-
-    fig, ax = plt.subplots(1)
-
-    ax.plot(noises, means, lw=2, label='theta(x)', color='blue')
-    ax.plot(noises, means_2, lw=2, label='theta(x)^T h(x)', color='purple')
-    ax.fill_between(noises, means_max, means_min, facecolor='blue', alpha=0.3)
-    ax.fill_between(noises, means_max_2, means_min_2, facecolor='purple', alpha=0.3)
-    ax.set_title('Stability')
-    ax.legend(loc='upper left')
-    ax.set_xlabel('Added noise')
-    ax.set_ylabel('Norm of relevance coefficients')
-    ax.grid()
-    plt.show()
+        ax.plot(noises, means, lw=2, label='theta(x)', color='blue')
+        ax.plot(noises, means_2, lw=2, label='theta(x)^T h(x)', color='purple')
+        ax.fill_between(noises, means_max, means_min, facecolor='blue', alpha=0.3)
+        ax.fill_between(noises, means_max_2, means_min_2, facecolor='purple', alpha=0.3)
+        ax.set_title('Stability')
+        ax.legend(loc='upper left')
+        ax.set_xlabel('Added noise')
+        ax.set_ylabel('Norm of relevance coefficients')
+        ax.grid()
+        plt.show()
 
     # with open('stability_distances.pkl', "rb") as input_file:
     #     noises = np.arange(0, 0.21, 0.01)
