@@ -47,6 +47,7 @@ from SENN.conceptizers import input_conceptizer, image_fcc_conceptizer
 from SENN.parametrizers import  dfc_parametrizer
 from SENN.aggregators import additive_scalar_aggregator
 from SENN.trainers import VanillaClassTrainer, GradPenaltyTrainer
+import itertools
 
 from robust_interpret.explainers import gsenn_wrapper
 from robust_interpret.utils import lipschitz_feature_argmax_plot
@@ -55,7 +56,111 @@ import matplotlib.pyplot as plt
 import warnings
 warnings.simplefilter(action='ignore', category=(FutureWarning, UserWarning))
 
+import random
+
 class new_wrapper(gsenn_wrapper):
+
+    def plot_distribution_h(self, test_tds, plot_type='h(x)'):
+    
+        values = []
+        for i in tqdm(range(len(test_tds.dataset))):
+            x = Variable(test_tds.dataset[i][0], volatile = True)
+            if plot_type == 'h(x)':
+                h_x = x.data.numpy().squeeze()
+                values.append(h_x)
+            elif plot_type == 'theta(x)':
+                f   = self.net.forward(x.reshape(1,-1))
+                pred_class = f.argmax()
+                theta = self(x, y = pred_class).data.numpy().squeeze()
+                values.append(theta)
+            elif plot_type == 'theta(x)h(x)':
+                h_x = x.data.numpy().squeeze()
+                f   = self.net.forward(x.reshape(1,-1))
+                pred_class = f.argmax()
+                theta = self(x, y = pred_class).data.numpy().squeeze()
+                values.append(np.multiply(theta, h_x))
+
+
+        values = list(itertools.chain.from_iterable(values))
+
+        return values
+
+    def compute_stability(self, dataset, sigma = 0.1):
+        distances_1 = []
+        distances_2 = []
+
+        for i in range(len(dataset.dataset)):
+
+            x = Variable(dataset.dataset[i][0], volatile = True)
+            h_x = x.data.numpy().squeeze()
+            f   = self.net.forward(x.reshape(1,-1))
+            pred_class = f.argmax()
+            theta = self(x, y = pred_class).data.numpy().squeeze()
+
+            deps_1 = theta
+            deps_2 = np.multiply(theta, h_x)
+
+            # ADD NOISE
+            flip = random.choice(range(6))
+
+            # Flip two_yr_recisivism
+            if flip == 0:
+                if x[0] == float(0):
+                    x[0] = float(1)
+                else:
+                    x[0] == float(0)
+            # Add noise to number of priors
+            elif flip == 1:
+                x[1] = x[1] + np.random.normal(0, sigma)
+            # Flip age
+            elif flip == 2:
+                if x[2] == float(1.0):
+                    x[2], x[3] == float(0), float(1)
+                else:
+                    x[3], x[2] == float(0), float(1)
+            # Flip race
+            elif flip == 3:
+                select = True
+                race = (x[4:9] == float(1.0)).nonzero()
+                if len(race) == 0:
+                    race = 100
+                else:
+                    race = race[0] + 4
+                while select:
+                    index = random.choice(range(4, 9))
+                    if index != race:
+                        select = False
+                x[4:9] = float(0)
+                x[index] = float(1)
+            # Flip gender
+            elif flip == 4:
+                if x[9] == float(0.0):
+                    x[9] = float(1.0)
+                else:
+                    x[9] = float(0.0)
+            elif flip == 5:
+                if x[10] == float(0.0):
+                    x[10] = float(1.0)
+                else:
+                    x[10] = float(0.0)
+
+            h_x = x.data.numpy().squeeze()
+            f = self.net.forward(x.reshape(1,-1))
+            pred_class = f.argmax()
+            theta = self(x, y = pred_class).data.numpy().squeeze()
+
+            deps_1_noise = theta
+            deps_2_noise = np.multiply(theta, h_x)
+
+            # Compute norms
+            dist_1 = np.linalg.norm(deps_1 - deps_1_noise)
+            distances_1.append(dist_1)
+
+            dist_2 = np.linalg.norm(deps_2 - deps_2_noise)
+            distances_2.append(dist_2)
+
+        return distances_1, distances_2
+
 
     def compute_dataset_consistency(self,  dataset, targets = None,
      reference_value = 0, inputs_are_concepts = True, save_path = None,
@@ -248,6 +353,7 @@ def load_compas_data(valid_size=0.1, shuffle=True, random_seed=2008, batch_size=
     x_train, x_valid, y_train, y_valid = train_test_split(x_train, y_train, test_size=0.1, random_state=85)
 
     feat_names = list(x_train.columns)
+    print("feature names", feat_names)
     x_train = x_train.values # pandas -> np
     x_test  = x_test.values
 
@@ -317,16 +423,16 @@ def main():
 
     results = {}
 
-    train_acc = trainer.validate(train_loader, fold = 'train')
-    valid_acc = trainer.validate(valid_loader, fold = 'valid')
-    test_acc = trainer.validate(test_loader, fold = 'test')
+    # train_acc = trainer.validate(train_loader, fold = 'train')
+    # valid_acc = trainer.validate(valid_loader, fold = 'valid')
+    # test_acc = trainer.validate(test_loader, fold = 'test')
 
-    results['train_accuracy'] = train_acc
-    results['valid_accuracy']  = valid_acc
-    results['test_accuracy']  = test_acc
-    print('Train accuracy: {:8.2f}'.format(train_acc))
-    print('Valid accuracy: {:8.2f}'.format(valid_acc))
-    print('Test accuracy: {:8.2f}'.format(test_acc))
+    # results['train_accuracy'] = train_acc
+    # results['valid_accuracy']  = valid_acc
+    # results['test_accuracy']  = test_acc
+    # print('Train accuracy: {:8.2f}'.format(train_acc))
+    # print('Valid accuracy: {:8.2f}'.format(valid_acc))
+    # print('Test accuracy: {:8.2f}'.format(test_acc))
 
 
     #noise_stability_plots(model, test_tds, cuda = args.cuda, save_path = results_path)
@@ -383,6 +489,7 @@ def main():
                         verbose = False)
 
     ### Consistency analysis
+
     correlations = np.array([])
     altcorrelations = np.array([])
     for i, (inputs, targets) in enumerate(tqdm(test_loader)):
@@ -436,7 +543,63 @@ def main():
     #                     verbose = False)
 
     # Iteratively perform faithfulness analysis on test inputs
+    # correlations = np.array([])
+    # altcorrelations = np.array([])
+    # for i, (inputs, targets) in enumerate(test_loader):
+    #         # get the inputs
+    #         # if model.cuda:
+    #         #     inputs, targets = inputs.cuda(), targets.cuda()
+    #         input_var = torch.autograd.Variable(inputs, volatile=True)
+    #         target_var = torch.autograd.Variable(targets)
+    #         save_path = results_path + '/faithfulness' + str(i) + '/'
+    #         if not os.path.isdir(save_path):
+    #             os.mkdir(save_path)
+    #         corrs, altcorrs = expl.compute_dataset_consistency(input_var, targets = target_var, inputs_are_concepts = False, save_path = save_path)
+    #         correlations = np.append(correlations, corrs)
+    #         altcorrelations = np.append(altcorrelations, altcorrs)
+    #         print("i: ", i)
+    #         # if i > 0:
+    #         #     print("Breaking out of loop")
+    #         #     break
+    # average_correlation = np.sum(correlations)/len(correlations)
+    # std_correlation = np.std(correlations)
+    # average_alt_correlation = np.sum(altcorrelations)/len(altcorrelations)
+    # std_alt_correlation = np.std(altcorrelations)
+    # print("Average correlation:", average_correlation)
+    # print("Standard deviation of correlations: ", std_correlation)
+    # print("Average alternative correlation:", average_alt_correlation)
+    # print("Standard deviation of alternative correlations: ", std_alt_correlation)
 
+    ## JOOSJE: STABILITIES
+    # stabilities_1, stabilities_2 = expl.compute_stability(test_loader)
+    # stabilities = [stabilities_1, stabilities_2]
+
+    # box = plt.boxplot(stabilities, patch_artist=True, labels=['theta(x)', 'theta(x) h(x)'])
+    # colors = ['blue', 'purple']
+    # for patch, color in zip(box['boxes'], colors):
+    #     patch.set_facecolor(color)
+    # plt.show()
+
+    plot_type = 'theta(x)h(x)'a
+    values = expl.plot_distribution_h(test_loader, plot_type=plot_type)
+    if plot_type == 'h(x)':
+        xtitle = 'Concept values h(x)'
+        ytitle = 'p(h(x))'
+        plot_color = 'blue'
+    elif plot_type == 'theta(x)':
+        xtitle = 'Theta values'
+        ytitle = 'p(theta(x))'
+        plot_color = 'pink'
+    elif plot_type == 'theta(x)h(x)':
+        xtitle = 'Theta(x)^T h(x) values'
+        ytitle = 'p(theta(x)^T h(x)'
+        plot_color = 'purple'
+
+    print('len values', len(values))
+    plt.hist(values, color = plot_color, edgecolor = '#CCE6FF', bins=20)
+    plt.xlabel(xtitle)
+    plt.ylabel(ytitle)
+    plt.show()
 
 if __name__ == "__main__":
     main()
