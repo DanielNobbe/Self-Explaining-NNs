@@ -59,7 +59,7 @@ class new_wrapper(gsenn_wrapper):
 
     def compute_dataset_consistency(self,  dataset, targets = None,
      reference_value = 0, inputs_are_concepts = True, save_path = None,
-      plot_alt_dependencies = True):
+      plot_alt_dependencies = True, demo_mode = False):
         """
             does compute_prob_drop for all dataset, returns stats and plots
         """
@@ -69,6 +69,10 @@ class new_wrapper(gsenn_wrapper):
         altcorrs = []
         i = 0
         for x in dataset:
+            if demo_mode:
+                if i != demo_mode-1:
+                    i += 1
+                    continue
             if save_path:
                 path = save_path + '_' + str(i) + '/'
             else:
@@ -77,8 +81,7 @@ class new_wrapper(gsenn_wrapper):
                 target = targets[i]
             else:
                 target = None
-            i += 1
-            p_d, att = self.compute_prob_drop(x, target = target, save_path = path,
+            p_d, att, deps = self.compute_prob_drop(x, target = target, save_path = path,
               alternative = True, inputs_are_concepts = True)
             # p_d is now theta*h for each concept.
             p_d = p_d.squeeze()
@@ -92,14 +95,14 @@ class new_wrapper(gsenn_wrapper):
             
             if not np.all(p_d == 0):
                 corrs.append(np.corrcoef(p_d, att)[0,1])
-                deps, thetas = self.compute_dependencies(x, inputs_are_concepts = True)
+                # deps, thetas = self.compute_dependencies(x, inputs_are_concepts = True)
                 altcorrs.append(np.corrcoef(p_d, deps)[0,1])
-                if plot_alt_dependencies:
+                if plot_alt_dependencies and (not path is None):
 
 
                     classes = ['C' + str(i) for i in range(p_d.shape[0])]
                     deps_to_plot = dict(zip(classes, deps))
-                    thetas_to_plot = dict(zip(classes, thetas[0]))
+                    thetas_to_plot = dict(zip(classes, atts[0]))
                     fig, ax = plt.subplots(1, 2)
                     if targets is not None:
                         title = 'Combined dependencies, target = ' + str(target.item())
@@ -107,19 +110,20 @@ class new_wrapper(gsenn_wrapper):
                         title = 'Combined dependencies'
                     A = plot_dependencies(deps_to_plot, title= title , sort_rows = False, ax = ax[0])
                     B = plot_dependencies(thetas_to_plot, title='Theta dependencies', sort_rows = False, ax = ax[1])
-                    if not path == None:
-                        plot_path = path + '/dependencies/'
-                        if not os.path.isdir(plot_path):
-                            os.mkdir(plot_path)
-                        fig.savefig(plot_path + str(i), format = "png", dpi=300)
+                    
+                    plot_path = path + '/dependencies/'
+                    if not os.path.isdir(plot_path):
+                        os.mkdir(plot_path)
+                    fig.savefig(plot_path + str(i) + '.png', format = "png", dpi=300)
             plt.close('all')
-
+            i += 1
         corrs = np.array(corrs)
         altcorrs = np.array(altcorrs)
 
         return corrs, altcorrs
 
-    def compute_prob_drop(self, x, target = None, reference_value = 0, plot = False, save_path = None, alternative = False, inputs_are_concepts = False):
+    def compute_prob_drop(self, x, target = None, reference_value = 0, plot = False, 
+    save_path = None, alternative = False, inputs_are_concepts = False):
         """
             This is placed here to prevent having to update the robust_interpret package.
         """
@@ -143,7 +147,7 @@ class new_wrapper(gsenn_wrapper):
         #     pred_class = int(target.item()) # Add this to MNIST implementation
         attributions = self(x, y = target) # attributions are theta values (i think)
         deltas = []
-        for i in tqdm(range(h_x.shape[0])):
+        for i in range(h_x.shape[0]):
             x_p = x.clone()
             x_p[i] = reference_value # uncomment this to be compatible with uci dataset #TODO: Make compatible with both compas and mnist
             h_x_p = h_x.clone()
@@ -161,36 +165,39 @@ class new_wrapper(gsenn_wrapper):
             attributions_plot_alt = attributions.squeeze() * h_x.cpu().detach().numpy().squeeze()
         attributions_plot = attributions.squeeze()
         plot = True
-        if plot:
+        if plot and not save_path is None:
             save_path_or = save_path + 'original'
             if not os.path.isdir(save_path):
-                print(save_path)
                 os.mkdir(save_path)
             # if not os.path.isdir(save_path_or):
             #     os.mkdir(save_path_or)
             save_path_alt = save_path + 'alternative'
             # if not os.path.isdir(save_path_alt):
             #     os.mkdir(save_path_alt)
-            plot_prob_drop(attributions_plot.squeeze(), prob_drops, save_path = save_path_or) # remove [0] after attributions for uci
+            ex_att = max( max(max(attributions_plot) , max(attributions_plot_alt)), 
+            -min(min(attributions_plot) , min(attributions_plot_alt)))
+            lim_prob_drop = max(max(prob_drops), -min(prob_drops))
+            limits = [ex_att, lim_prob_drop]
+            plot_prob_drop(attributions_plot.squeeze(), prob_drops, save_path = save_path_or, limits=limits) # remove [0] after attributions for uci
             if alternative:
-                plot_prob_drop(attributions_plot_alt.squeeze(), prob_drops, save_path = save_path_alt)
-        return prob_drops, attributions
+                plot_prob_drop(attributions_plot_alt.squeeze(), prob_drops, save_path = save_path_alt, limits=limits)
+        return prob_drops, attributions, attributions_plot_alt
 
-    def compute_dependencies(self, x, reference_value = 0, plot = False, save_path = None, inputs_are_concepts = False):
-        if not inputs_are_concepts:
-                # x = x.type(torch.FloatTensor)
-                x = x.unsqueeze(dim = 0)
-                h_x = self.net.forward(x, h_options = -1)
-                f = self.net.forward(x, h_x = h_x, h_options = 1)
-            # Then, use concepts to forward pass through the model
-            # if inputs_are_concepts:
-        else:
-            h_x = x
-            # x = h_x # model is compute_proba function, not neural model - we need to add output layer to compute probabilities. Not necessary for now TODO
-            f   = self.net.forward(x.reshape(1,-1))
-        thetas = self(x) # attributions are theta values (i think)
-        dependencies = thetas.squeeze() * h_x.cpu().detach().numpy().squeeze()
-        return dependencies, thetas
+    # def compute_dependencies(self, x, reference_value = 0, plot = False, save_path = None, inputs_are_concepts = False):
+    #     if not inputs_are_concepts:
+    #             # x = x.type(torch.FloatTensor)
+    #             x = x.unsqueeze(dim = 0)
+    #             h_x = self.net.forward(x, h_options = -1)
+    #             f = self.net.forward(x, h_x = h_x, h_options = 1)
+    #         # Then, use concepts to forward pass through the model
+    #         # if inputs_are_concepts:
+    #     else:
+    #         h_x = x
+    #         # x = h_x # model is compute_proba function, not neural model - we need to add output layer to compute probabilities. Not necessary for now TODO
+    #         f   = self.net.forward(x.reshape(1,-1))
+    #     thetas = self(x) # attributions are theta values (i think)
+    #     dependencies = thetas.squeeze() * h_x.cpu().detach().numpy().squeeze()
+    #     return dependencies, thetas
 
 
 def find_conflicting(df, labels, consensus_delta = 0.2):
@@ -300,9 +307,9 @@ def main():
     else:
         raise ValueError('Unrecognized theta_reg_type')
 
-    trainer.train(train_loader, valid_loader, epochs = args.epochs, save_path = model_path)
-
-    trainer.plot_losses(save_path=results_path)
+    if not args.load_model and args.train:
+        trainer.train(train_loader, valid_loader, epochs = args.epochs, save_path = model_path)
+        trainer.plot_losses(save_path=results_path)
 
     # Load Best One
     checkpoint = torch.load(os.path.join(model_path,'model_best.pth.tar'))
@@ -378,22 +385,29 @@ def main():
     ### Consistency analysis
     correlations = np.array([])
     altcorrelations = np.array([])
-    for i, (inputs, targets) in enumerate(test_loader):
+    for i, (inputs, targets) in enumerate(tqdm(test_loader)):
             # get the inputs
             # if model.cuda:
             #     inputs, targets = inputs.cuda(), targets.cuda()
+            if args.demo:
+                if i != 0:
+                    continue
+                else:
+                    args.demo = 0 + 1
             input_var = torch.autograd.Variable(inputs, volatile=True)
             target_var = torch.autograd.Variable(targets)
-            save_path = results_path + '/faithfulness' + str(i) + '/'
-            if not os.path.isdir(save_path):
-                os.mkdir(save_path)
-            corrs, altcorrs = expl.compute_dataset_consistency(input_var, targets = target_var, inputs_are_concepts = False, save_path = save_path)
+            if not args.noplot:
+                save_path = results_path + '/faithfulness' + str(i) + '/'
+                if not os.path.isdir(save_path):
+                    os.mkdir(save_path) 
+            else:
+                save_path = None
+            corrs, altcorrs = expl.compute_dataset_consistency(input_var, targets = target_var, 
+            inputs_are_concepts = False, save_path = save_path, demo_mode=args.demo)
             correlations = np.append(correlations, corrs)
             altcorrelations = np.append(altcorrelations, altcorrs)
-            print("i: ", i)
-            # if i > 0:
-            #     print("Breaking out of loop")
-            #     break
+            # print("i: ", i)
+
     average_correlation = np.sum(correlations)/len(correlations)
     std_correlation = np.std(correlations)
     average_alt_correlation = np.sum(altcorrelations)/len(altcorrelations)
@@ -409,7 +423,7 @@ def main():
     colors = ['blue', 'purple']
     for patch, color in zip(box['boxes'], colors):
         patch.set_facecolor(color)
-    plt.savefig(results_path + 'faithfulness_box_plot', format = "png", dpi=300)
+    plt.savefig(results_path + '/faithfulness_box_plot.png', format = "png", dpi=300)
 
 
     # expl = gsenn_wrapper(model,
