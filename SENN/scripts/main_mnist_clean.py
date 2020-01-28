@@ -127,8 +127,8 @@ def parse_args():
 def eval_stability_2(test_tds, expl, scale, our_method=False):
 	distances = []
 
-	for i in tqdm(range(1000)):
-		x = Variable(test_tds[i][0].view(1,1,28,28), volatile = True)
+	for i in tqdm(range(10000)):
+		x = Variable(test_tds.dataset[i][0].view(1,1,28,28), volatile = True)
 		h_x = expl.net.forward(x, h_options = -1).data.numpy().squeeze()
 		theta = expl(x)[0]
 		if our_method:
@@ -150,43 +150,43 @@ def eval_stability_2(test_tds, expl, scale, our_method=False):
 
 	return distances
 
-def eval_stability(test_tds, model, scale):
+def plot_distribution_h(test_tds, expl, plot_type='h(x)'):
+	
+	values = []
+	for i in tqdm(range(10000)):
+		x = Variable(test_tds.dataset[i][0].view(1,1,28,28), volatile = True)
+		if plot_type == 'h(x)':
+			h_x = expl.net.forward(x, h_options = -1).data.numpy().squeeze()
+			values.append(h_x)
+		elif plot_type == 'theta(x)':
+			theta = expl(x)[0]
+			values.append(theta)
+		elif plot_type == 'theta(x)h(x)':
+			h_x = expl.net.forward(x, h_options = -1).data.numpy().squeeze()
+			theta = expl(x)[0]
+			values.append(np.multiply(theta, h_x))
 
-    #distances = defaultdict(list)
-    distances = []
 
-    for i in tqdm(range(1000)):
+	values = list(itertools.chain.from_iterable(values))
 
-	    x = Variable(test_tds[i][0].view(1,1,28,28), volatile = True)
+	if plot_type == 'h(x)':
+		xtitle = 'Concept values h(x)'
+		ytitle = 'p(h(x))'
+		plot_color = 'blue'
+	elif plot_type == 'theta(x)':
+		xtitle = 'Theta values'
+		ytitle = 'p(theta(x))'
+		plot_color = 'pink'
+	elif plot_type == 'theta(x)h(x)':
+		xtitle = 'Theta(x)^T h(x) values'
+		ytitle = 'p(theta(x)^T h(x)'
+		plot_color = 'purple'
 
-	    true_class = test_tds[i][1][0].item()
-
-	    pred = model(x)
-
-	    theta = model.thetas.data.cpu().numpy().squeeze()
-
-	    klass = pred.data.max(1)[1]
-	    deps = theta[:,klass].squeeze()
-
-	    # print("prediction", klass)
-	    # print("dependencies", deps)
-
-	    # Add noise to sample and repeat
-	    noise = Variable(scale*torch.randn(x.size()), volatile = True)
-
-	    pred = model(noise)
-
-	    theta = model.thetas.data.cpu().numpy().squeeze()
-
-	    klass_noise = pred.data.max(1)[1]
-	    deps_noise = theta[:,klass].squeeze()
-
-	    dist = np.linalg.norm(deps - deps_noise)
-
-	    #distances[true_class].append(dist)
-	    distances.append(dist)
-
-    return distances
+	print('len values', len(values))
+	plt.hist(values, color = plot_color, edgecolor = '#CCE6FF', bins=20)
+	plt.xlabel(xtitle)
+	plt.ylabel(ytitle)
+	plt.show()
 
 
 
@@ -271,51 +271,58 @@ def main():
     print("Results_path", results_path)
     # noise_stability_plots(model, test_tds, cuda = args.cuda, save_path = results_path)
 
-    # Evaluate Stability
-    noises = np.arange(0, 1, 0.05)
-    print(noises)
+    # Make histogram 
+    plot_distribution_h(test_loader, expl, 'theta(x)h(x)')
+    plot_distribution_h(test_loader, expl, 'theta(x)')
+    plot_distribution_h(test_loader, expl, 'h(x)')
 
-    distance_dict = {}
 
+    noises = np.arange(0, 0.21, 0.02)
+    dist_dict, dist_dict_2 = {}, {}
     for noise in noises:
-    	print(noise)
-    	distances = eval_stability_2(test_tds, expl, noise, True)
-    	distance_dict[noise] = distances
+    	distances = eval_stability_2(test_loader, expl, noise, False)
+    	distances_2 = eval_stability_2(test_loader, expl, noise, True)
+    	dist_dict[noise] = distances
+    	dist_dict_2[noise] = distances_2
+
+    return dist_dict, dist_dict_2, noises
 
     # (pickle.dump(test_tds, open("test_tds.pkl", "wb")))
-    (pickle.dump(distance_dict, open(results_path + 'our_method_stability_distances.pkl', "wb")))
-    
+    # (pickle.dump(distance_dict, open(results_path + 'our_method_stability_distances.pkl', "wb")))
+
+    ### 3. Local lipschitz estimate over multiple samples with Black BOx Optim
+
+
 if __name__ == '__main__':
-	# main()
+	main()
 
-	with open('stability_distances.pkl', "rb") as input_file:
-		noises = np.arange(0, 1, 0.05)
-		distances = pickle.load(input_file)
+	distances, distances_2, noises = main()
 
-		means = [np.mean(distances[noise]) for noise in noises]
-		stds = [np.std(distances[noise]) for noise in noises]
+	means = [np.mean(distances[noise]) for noise in noises]
+	stds = [np.std(distances[noise]) for noise in noises]
 
-		means_min = [means[i] - stds[i] for i in range(len(means))]
-		means_max = [means[i] + stds[i] for i in range(len(means))]
+	means_min = [means[i] - stds[i] for i in range(len(means))]
+	means_max = [means[i] + stds[i] for i in range(len(means))]
 
-	with open('our_method_stability_distances.pkl', "rb") as input_file:
-		distances_2 = pickle.load(input_file)
+	means_2 = [np.mean(distances_2[noise]) for noise in noises]
+	stds_2 = [np.std(distances_2[noise]) for noise in noises]
 
-		means_2 = [np.mean(distances_2[noise]) for noise in noises]
-		stds_2 = [np.std(distances_2[noise]) for noise in noises]
+	means_min_2 = [means_2[i] - stds_2[i] for i in range(len(means_2))]
+	means_max_2 = [means_2[i] + stds_2[i] for i in range(len(means_2))]
 
-		means_min_2 = [means_2[i] - stds_2[i] for i in range(len(means_2))]
-		means_max_2 = [means_2[i] + stds_2[i] for i in range(len(means_2))]
+	fig, ax = plt.subplots(1)
 
-		fig, ax = plt.subplots(1)
+	ax.plot(noises, means, lw=2, label='theta(x)', color='blue')
+	ax.plot(noises, means_2, lw=2, label='theta(x)^T h(x)', color='purple')
+	ax.fill_between(noises, means_max, means_min, facecolor='blue', alpha=0.3)
+	ax.fill_between(noises, means_max_2, means_min_2, facecolor='purple', alpha=0.3)
+	ax.set_title('Stability')
+	ax.legend(loc='upper left')
+	ax.set_xlabel('Added noise')
+	ax.set_ylabel('Norm of relevance coefficients')
+	ax.grid()
+	plt.show()
 
-		ax.plot(noises, means, lw=2, label='theta(x)', color='blue')
-		ax.plot(noises, means_2, lw=2, label='theta(x)^T h(x)', color='yellow')
-		ax.fill_between(noises, means_max, means_min, facecolor='blue', alpha=0.3)
-		ax.fill_between(noises, means_max_2, means_min_2, facecolor='yellow', alpha=0.3)
-		ax.set_title('Stability')
-		ax.legend(loc='upper left')
-		ax.set_xlabel('Added noise')
-		ax.set_ylabel('Norm of relevance coefficients')
-		ax.grid()
-		plt.show()
+	# with open('stability_distances.pkl', "rb") as input_file:
+	# 	noises = np.arange(0, 0.21, 0.01)
+	# 	distances = pickle.load(input_file)
