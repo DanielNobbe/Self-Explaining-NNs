@@ -65,19 +65,19 @@ class new_wrapper(gsenn_wrapper):
         values = []
         for i in tqdm(range(len(test_tds.dataset))):
             x = Variable(test_tds.dataset[i][0], volatile = True)
-            if plot_type == 'h(x)':
+            if plot_type == 'hx':
                 h_x = x.data.numpy().squeeze()
                 values.append(h_x)
-            elif plot_type == 'theta(x)':
+            elif plot_type == 'thetax':
                 f   = self.net.forward(x.reshape(1,-1))
                 pred_class = f.argmax()
-                theta = self(x, y = pred_class).data.numpy().squeeze()
+                theta = self(x, y = pred_class).squeeze()
                 values.append(theta)
-            elif plot_type == 'theta(x)h(x)':
+            elif plot_type == 'thetaxhx':
                 h_x = x.data.numpy().squeeze()
                 f   = self.net.forward(x.reshape(1,-1))
                 pred_class = f.argmax()
-                theta = self(x, y = pred_class).data.numpy().squeeze()
+                theta = self(x, y = pred_class).squeeze()
                 values.append(np.multiply(theta, h_x))
 
 
@@ -579,27 +579,27 @@ def main():
     # for patch, color in zip(box['boxes'], colors):
     #     patch.set_facecolor(color)
     # plt.show()
+    if args.demo:
+        plot_types = ['thetaxhx', 'hx', 'thetax']
+        for plot_type in plot_types:
+            values = expl.plot_distribution_h(test_loader, plot_type=plot_type)
+            if plot_type == 'hx':
+                xtitle = 'Concept values h(x)'
+                ytitle = 'p(h(x))'
+                plot_color = 'blue'
+            elif plot_type == 'thetax':
+                xtitle = 'Theta values'
+                ytitle = 'p(theta(x))'
+                plot_color = 'pink'
+            elif plot_type == 'thetaxhx':
+                xtitle = 'Theta(x)^T h(x) values'
+                ytitle = 'p(theta(x)^T h(x)'
+                plot_color = 'purple'
 
-    plot_type = 'theta(x)h(x)'a
-    values = expl.plot_distribution_h(test_loader, plot_type=plot_type)
-    if plot_type == 'h(x)':
-        xtitle = 'Concept values h(x)'
-        ytitle = 'p(h(x))'
-        plot_color = 'blue'
-    elif plot_type == 'theta(x)':
-        xtitle = 'Theta values'
-        ytitle = 'p(theta(x))'
-        plot_color = 'pink'
-    elif plot_type == 'theta(x)h(x)':
-        xtitle = 'Theta(x)^T h(x) values'
-        ytitle = 'p(theta(x)^T h(x)'
-        plot_color = 'purple'
-
-    print('len values', len(values))
-    plt.hist(values, color = plot_color, edgecolor = '#CCE6FF', bins=20)
-    plt.xlabel(xtitle)
-    plt.ylabel(ytitle)
-    plt.show()
-
+            print('len values', len(values))
+            plt.hist(values, color = plot_color, edgecolor = '#CCE6FF', bins=20)
+            plt.xlabel(xtitle)
+            plt.ylabel(ytitle)
+            plt.savefig(results_path + '/histogram' + plot_type + '.png', format = "png", dpi=300)
 if __name__ == "__main__":
     main()
