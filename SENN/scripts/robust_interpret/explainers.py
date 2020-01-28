@@ -784,7 +784,6 @@ class gsenn_wrapper(explainer_wrapper):
 
             if self.input_type == 'feature':
                 attributions = attrib_mat.cpu().view(1,-1).numpy()
-                print(attributions)
             else:
                 attributions = attrib_mat.gather(2,expl_target_class.cpu().view(-1,1).unsqueeze(2).repeat(1,natt,nclass))[:,:,0].numpy()
 

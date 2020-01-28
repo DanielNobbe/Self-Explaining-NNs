@@ -95,7 +95,8 @@ def load_mnist_data(valid_size=0.1, shuffle=True, random_seed=2008, batch_size =
 
 class new_wrapper(gsenn_wrapper):
 
-    def compute_dataset_consistency(self,  dataset, targets = None, reference_value = 0, inputs_are_concepts = True, save_path = None, plot_alt_dependencies = True):
+    def compute_dataset_consistency(self,  dataset, targets = None, reference_value = 0, inputs_are_concepts = True, save_path = None,
+     plot_alt_dependencies = True, demo_mode = False):
         """
             does compute_prob_drop for all dataset, returns stats and plots
         """
@@ -105,13 +106,17 @@ class new_wrapper(gsenn_wrapper):
         altcorrs = []
         i = 0
         for x in dataset:
+            if demo_mode:
+                if i != (demo_mode-1):
+                    i += 1
+                    continue
             if save_path:
                 path = save_path + '_' + str(i) + '/'
             else:
                 path = save_path
             target = targets[i]
-            i += 1
-            p_d, att = self.compute_prob_drop(x, target = target, inputs_are_concepts = inputs_are_concepts, save_path = path, alternative = True)
+            p_d, att, deps = self.compute_prob_drop(x, target = target, inputs_are_concepts = inputs_are_concepts,
+             save_path = path, alternative = True, plot = True)
             # p_d is now theta*h for each concept.
             p_d = p_d.squeeze()
             att = att.squeeze()
@@ -124,23 +129,28 @@ class new_wrapper(gsenn_wrapper):
             # print("attributions: ", atts)
 
             corrs.append(np.corrcoef(p_d, att)[0,1])
-            deps, thetas = self.compute_dependencies(x)
+            # deps, thetas = self.compute_dependencies(x)
             altcorrs.append(np.corrcoef(p_d, deps)[0,1])
             if plot_alt_dependencies:
 
 
-                classes = ['C' + str(i) for i in range(p_d.shape[0])]
+                classes = ['C' + str(i) for i in (range(1, p_d.shape[0]+1))]
                 deps_to_plot = dict(zip(classes, deps))
-                thetas_to_plot = dict(zip(classes, thetas[0]))
+                thetas_to_plot = dict(zip(classes, att))
                 fig, ax = plt.subplots(1, 2)
                 A = plot_dependencies(deps_to_plot, title= 'Combined dependencies, target = ' + str(target.item()), sort_rows = False, ax = ax[0])
                 B = plot_dependencies(thetas_to_plot, title='Theta dependencies', sort_rows = False, ax = ax[1])
-                if not save_path == None:
+                if not save_path is None:
                     plot_path = save_path + '/dependencies/'
                     if not os.path.isdir(plot_path):
                         os.mkdir(plot_path)
                     fig.savefig(plot_path + str(i) + '.png', format = "png", dpi=300)
+                    if demo_mode:
+                        plt.close('all')
+                        plt.imshow(x[0], cmap='Greys',  interpolation='nearest')
+                        plt.savefig(plot_path + str(i) + 'digit.png', format = "png", dpi=300)
             plt.close('all')
+            i += 1
 
         corrs = np.array(corrs)
         altcorrs = np.array(altcorrs)
@@ -151,10 +161,9 @@ class new_wrapper(gsenn_wrapper):
         # np.corrcoef(drops.flatten(), atts.flatten())
         return corrs, altcorrs
 
-    def compute_prob_drop(self, x, target = None, reference_value = 0, plot = False, save_path = None, inputs_are_concepts = True, alternative = False):
-        """
-            This is placed here to prevent having to update the robust_interpret package.
-        """
+    def compute_prob_drop(self, x, target = None, reference_value = 0, plot = False, save_path = None, 
+        inputs_are_concepts = True, alternative = False):
+
         # First, turn inputs into concepts
         if not inputs_are_concepts:
             # x = x.type(torch.FloatTensor)
@@ -169,10 +178,12 @@ class new_wrapper(gsenn_wrapper):
         # So for now, we use self.net
         # else:
         #     f = self.model.forward(x.reshape(1,-1), h_x = h_x,  h_options = 1)
-        pred_class = f.argmax()
+        # pred_class = f.argmax()
+        if target.nelement()>1:
+                _, target = torch.max(target)
         attributions = self(x, y = target) # attributions are theta values (i think)
         deltas = []
-        for i in tqdm(range(h_x.shape[1])):
+        for i in range(h_x.shape[1]):
             x_p = x.clone()
             # x_p[i] = reference_value # uncomment this to be compatible with uci dataset
             h_x_p = h_x.clone()
@@ -182,7 +193,7 @@ class new_wrapper(gsenn_wrapper):
             else:
                 f_p = self.net.forward(x, h_x = h_x_p,  h_options = 1)
             # print("outcome: ", f_p, f)
-            delta_i = (f - f_p)[0,pred_class]
+            delta_i = (f - f_p)[0,target]
             # print("delta_i: ", delta_i)
             deltas.append(delta_i.cpu().detach().numpy())
         prob_drops = np.array(deltas)
@@ -192,37 +203,42 @@ class new_wrapper(gsenn_wrapper):
         if alternative:
             attributions_plot_alt = attributions.squeeze() * h_x.cpu().detach().numpy().squeeze()
         attributions_plot = attributions.squeeze()
-        plot = True
-        if plot:
+        if plot and not (save_path is None):
             save_path_or = save_path + 'original'
             if not os.path.isdir(save_path):
-                print(save_path)
+                # print(save_path)
                 os.mkdir(save_path)
             # if not os.path.isdir(save_path_or):
             #     os.mkdir(save_path_or)
             save_path_alt = save_path + 'alternative'
             # if not os.path.isdir(save_path_alt):
             #     os.mkdir(save_path_alt)
-            plot_prob_drop(attributions_plot.squeeze(), prob_drops, save_path = save_path_or) # remove [0] after attributions for uci
-            if alternative:
-                plot_prob_drop(attributions_plot_alt.squeeze(), prob_drops, save_path = save_path_alt)
-        return prob_drops, attributions
+            max_att = max(max(attributions_plot) , max(attributions_plot_alt))
+            min_att = min(min(attributions_plot) , min(attributions_plot_alt))
+            lim_prob_drop = max(max(prob_drops), -min(prob_drops))
+            limits = [max_att, min_att, lim_prob_drop]
+            plot_prob_drop(attributions_plot.squeeze(), prob_drops, save_path = save_path_or, limits = limits) # remove [0] after attributions for uci
 
-    def compute_dependencies(self, x, reference_value = 0, plot = False, save_path = None, inputs_are_concepts = False):
-        if not inputs_are_concepts:
-                # x = x.type(torch.FloatTensor)
-                x = x.unsqueeze(dim = 0)
-                h_x = self.net.forward(x, h_options = -1)
-                # print("h_x: ",h_x)
-                f = self.net.forward(x, h_x = h_x, h_options = 1)
-            # Then, use concepts to forward pass through the model
-            # if inputs_are_concepts:
-        else:
-            x = h_x # model is compute_proba function, not neural model - we need to add output layer to compute probabilities. Not necessary for now TODO
-            f   = self.net.forward(x.reshape(1,-1))
-        thetas = self(x) # attributions are theta values (i think)
-        dependencies = thetas.squeeze() * h_x.cpu().detach().numpy().squeeze()
-        return dependencies, thetas
+            if alternative:
+                plot_prob_drop(attributions_plot_alt.squeeze(), prob_drops, save_path = save_path_alt, limits = limits)
+
+        return prob_drops, attributions, attributions_plot_alt
+
+    # def compute_dependencies(self, x, reference_value = 0, plot = False, save_path = None, inputs_are_concepts = False):
+    #     if not inputs_are_concepts:
+    #             # x = x.type(torch.FloatTensor)
+    #             x = x.unsqueeze(dim = 0)
+    #             h_x = self.net.forward(x, h_options = -1)
+    #             # print("h_x: ",h_x)
+    #             f = self.net.forward(x, h_x = h_x, h_options = 1)
+    #         # Then, use concepts to forward pass through the model
+    #         # if inputs_are_concepts:
+    #     else:
+    #         x = h_x # model is compute_proba function, not neural model - we need to add output layer to compute probabilities. Not necessary for now TODO
+    #         f   = self.net.forward(x.reshape(1,-1))
+    #     thetas = self(x) # attributions are theta values (i think)
+    #     dependencies = thetas.squeeze() * h_x.cpu().detach().numpy().squeeze()
+    #     return dependencies, thetas
 
 
 def parse_args():
@@ -244,7 +260,7 @@ def parse_args():
                         help='sample size for dataset Lipschitz estimation')
     parser.add_argument('--optim', type=str, default='gp',
                         help='black-box optimization method')
-
+    
     #####
 
     args = parser.parse_args()
@@ -354,20 +370,35 @@ def main():
     ### Consistency analysis
     correlations = np.array([])
     altcorrelations = np.array([])
-    for i, (inputs, targets) in enumerate(test_loader):
+    for i, (inputs, targets) in enumerate(tqdm(test_loader)):
             # get the inputs
+            if args.demo:
+                if args.nconcepts == 5:
+                    if i != 0:
+                        continue
+                    else:
+                        args.demo = 27+1
+                elif args.nconcepts == 22:
+                    if i != 0:
+                        continue
+                    else:
+                        args.demo = 1+1
             if args.cuda:
                 inputs, targets = inputs.cuda(), targets.cuda()
             input_var = torch.autograd.Variable(inputs, volatile=True)
             target_var = torch.autograd.Variable(targets)
-            save_path = results_path + '/faithfulness' + str(i) + '/'
-            if not os.path.isdir(save_path):
-                os.mkdir(save_path)
-            corrs, altcorrs = expl.compute_dataset_consistency(input_var, targets = target_var, inputs_are_concepts = False, save_path = save_path)
+            if not args.noplot:
+                save_path = results_path + '/faithfulness' + str(i) + '/'
+                if not os.path.isdir(save_path):
+                    os.mkdir(save_path)
+            else:
+                save_path = None
+            corrs, altcorrs = expl.compute_dataset_consistency(input_var, targets = target_var, 
+            inputs_are_concepts = False, save_path = save_path, demo_mode = args.demo)
             correlations = np.append(correlations, corrs)
             altcorrelations = np.append(altcorrelations, altcorrs)
-            if i > 2:
-                break
+
+
     
     average_correlation = np.sum(correlations)/len(correlations)
     std_correlation = np.std(correlations)
@@ -384,7 +415,8 @@ def main():
     colors = ['blue', 'purple']
     for patch, color in zip(box['boxes'], colors):
         patch.set_facecolor(color)
-    plt.savefig(results_path + 'faithfulness_box_plot.png', format = "png", dpi=300)
+    print("Figure saved to: ", results_path)
+    plt.savefig(results_path + '/faithfulness_box_plot.png', format = "png", dpi=300, verbose=True)
 
 
     # # #### Debug argmax plot_theta_stability
@@ -461,7 +493,9 @@ def main():
 
 
     # add concept plot
-    concept_grid(model, test_loader, cuda = args.cuda, top_k = 10, save_path = results_path + '/concept_grid.png')
+    if not args.noplot:
+        if (not args.demo) or (args.demo and args.nconcepts == 5):
+            concept_grid(model, test_loader, cuda = args.cuda, top_k = 10, save_path = results_path + '/concept_grid.png')
 
     pickle.dump(All_Results, open(results_path + '_combined_metrics.pkl', "wb")) # Aangepast: .pkl was .format(dataname)
 

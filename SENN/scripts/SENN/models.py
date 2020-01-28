@@ -213,11 +213,12 @@ class GSENN(nn.Module):
         # to do a forward pass based on the concepts, if the model normally takes raw data as input.
         if DEBUG:
             print('Input to GSENN:', x.size())
-        if self.learning_H and h_options != 1:
-            h_x = self.conceptizer(x)
+        if h_options != 1:
+            h_x = self.conceptizer(
+                autograd.Variable(x.data, requires_grad=False))
             if type(h_x) is tuple:
                 h_x, x_tilde = h_x
-            self.recons = x_tilde
+                self.recons = x_tilde
             # if self.sparsity:
             # Store norm for regularization (done by Trainer)
             # .mul(self.l1weight) # Save sparsity loss, will be used by trainer
@@ -333,7 +334,6 @@ class GSENN(nn.Module):
 
         if (not skip_bias) and self.conceptizer.add_bias:
             pdb.set_trace()
-            print('here')
             attr = torch.index_select(
                 attr, -1, torch.LongTensor(range(attr.shape[-1] - 1)))
             pdb.set_trace()

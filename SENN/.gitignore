@@ -34,7 +34,7 @@ __pycache__/
 
 /data/
 /models/
-/out/
+## /out/
 /log/
 SENN/out/
 SENN/checkpoints/

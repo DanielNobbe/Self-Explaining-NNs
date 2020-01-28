@@ -731,27 +731,24 @@ def concept_grid(model, data_loader, cuda=False, top_k = 6, layout = 'vertical',
         fig.subplots_adjust(wspace=0.1, hspace=0.01)
 
     if save_path is not None:
-        plt.savefig(save_path + '.png', bbox_inches = 'tight', format='png', dpi=300)
+        plt.savefig(save_path , bbox_inches = 'tight', format='png', dpi=300)
     # plt.show()
     if return_fig:
         return fig, axes
 
 
-def plot_prob_drop(attribs, prob_drop, save_path = None):
+def plot_prob_drop(attribs, prob_drop, save_path = None, limits = None):
 
     ind = np.arange(len(attribs))
     column_names = [str(j) for j in range(1,22)]
 
     width = 0.65
-
     fig, ax1 = plt.subplots(figsize=(8,4))
 
     color1 = '#377eb8'
     ax1.bar(ind+width+0.35, attribs, 0.45, color=color1)
     ax1.set_ylabel(r'Feature Relevance',color=color1, fontsize = 14)
-    #ax1.set_ylim(-1,1)
     ax1.set_xlabel('Feature')
-    ax1.tick_params(axis='y', colors=color1)
 
 
     color2 = '#ff7f00'
@@ -761,9 +758,11 @@ def plot_prob_drop(attribs, prob_drop, save_path = None):
     ax2.set_ylabel('Probability Drop', color = color2, fontsize = 14)
     ax2.tick_params(axis='y', colors=color2)
 
-
     ax1.set_xticks(ind+width+(width/2))
     ax1.set_xticklabels(column_names)
+    if not limits is None:
+        ax1.set_ylim(-limits[0]*1.1, limits[0]*1.1) 
+        ax2.set_ylim(-limits[-1]*1.1, limits[-1]*1.1)
 
     fig.tight_layout()
     if save_path:

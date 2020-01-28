@@ -909,7 +909,7 @@ class GradPenaltyTrainer3(ClassificationTrainer):
         grad_penalty = self.calc_gradient_penalty(self.model, inputs, pred, norm = 1)
         #grad_penalty.backward() # this will be added to the grads w.r.t. the loss
 
-        print(grad_penalty.data[0])
+        # print(grad_penalty.data[0])
         loss = pred_loss + self.lambd*grad_penalty
         loss.backward()
 

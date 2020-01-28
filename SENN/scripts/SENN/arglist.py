@@ -85,6 +85,8 @@ def get_senn_parser():
     parser.add_argument('--debug', action='store_true', default=False, help='debug mode' )
 
     parser.add_argument('--lisa', type=int, default = 0, help='Execution on Lisa')
+    parser.add_argument('--demo', action='store_true', default=False, help='Include this flag to run in demo mode.')
+    parser.add_argument('--noplot', action='store_true', default=False, help='Include this flag to disable all plots')
 
     return parser
 
@@ -93,7 +95,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Self-Explaining Neural Net Classifier')
 
     # setup
-    parser.add_argument('--train', action='store_true', default=True, help='Whether or not to train model')
+    parser.add_argument('--train', action='store_true', default=False, help='Whether or not to train model')
     parser.add_argument('--test', action='store_true', default=False, help='Whether or not to run model on test set')
     parser.add_argument('--load_model', action='store_true', default=False, help='Load pretrained model from default path')
 
@@ -145,7 +147,8 @@ def parse_args():
     # misc
     parser.add_argument('--print_freq' , type=int, default=10, help='print frequency during train (in batches)')
     parser.add_argument('--lisa', type=int, default = 0, help='Execution on Lisa')
-
+    parser.add_argument('--demo', action='store_true', default=False, help='Include this flag to run in demo mode.')
+    parser.add_argument('--noplot', action='store_true', default=False, help='Include this flag to disable all plots.')
     args = parser.parse_args()
 
 

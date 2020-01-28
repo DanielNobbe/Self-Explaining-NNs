@@ -1,0 +1,4 @@
+Average correlation: 0.5785158465174984
+Standard deviation of correlations:  0.23585627704266726
+Average alternative correlation: 0.977285894765689
+Standard deviation of alternative correlations:  0.0303138805123212
