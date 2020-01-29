@@ -215,15 +215,20 @@ class GSENN(nn.Module):
         if DEBUG:
             print('Input to GSENN:', x.size())
         if h_options != 1:
-            h_x = self.conceptizer(
-                autograd.Variable(x.data, requires_grad=False))
-            if type(h_x) is tuple:
-                h_x, x_tilde = h_x
+            if self.learning_H:
+                h_x, x_tilde = self.conceptizer(x)
                 self.recons = x_tilde
+                self.h_norm_l1 = h_x.norm(p=1)
+            else:
+                h_x = self.conceptizer(
+                    autograd.Variable(x.data, requires_grad=True))
+            # if type(h_x) is tuple:
+            #     h_x, x_tilde = h_x
+            #     self.recons = x_tilde
             # if self.sparsity:
             # Store norm for regularization (done by Trainer)
             # .mul(self.l1weight) # Save sparsity loss, will be used by trainer
-            self.h_norm_l1 = h_x.norm(p=1)
+            
         # elif h_options == False:
         #     h_x = self.conceptizer(
         #         autograd.Variable(x.data, requires_grad=False))
@@ -233,6 +238,7 @@ class GSENN(nn.Module):
 
 
         self.concepts = h_x  # .data
+        # print("h_x: ", h_x)
 
         if DEBUG:
             print('Encoded concepts: ', h_x.size())

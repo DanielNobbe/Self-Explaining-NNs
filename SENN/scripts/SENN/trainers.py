@@ -646,7 +646,7 @@ class GradPenaltyTrainer(ClassificationTrainer):
         #grad_penalty.backward() # this will be added to the grads w.r.t. the loss
 
         #print(grad_penalty.data[0])
-        loss = pred_loss + self.lambd*grad_penalty
+        loss +=  self.lambd*grad_penalty
         loss.backward()
 
         #self.loss_history.append([pred_loss.data[0], grad_penalty.data[0]])
