@@ -328,7 +328,3 @@ if __name__ == '__main__':
         ax.set_ylabel('Norm of relevance coefficients')
         ax.grid()
         plt.show()
-
-    # with open('stability_distances.pkl', "rb") as input_file:
-    #     noises = np.arange(0, 0.21, 0.01)
-    #     distances = pickle.load(input_file)
