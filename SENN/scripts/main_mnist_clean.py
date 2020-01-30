@@ -130,7 +130,10 @@ def eval_stability_2(test_tds, expl, scale, our_method=False):
     for i in tqdm(range(10000)):
         x = Variable(test_tds.dataset[i][0].view(1,1,28,28), volatile = True)
         h_x = expl.net.forward(x, h_options = -1).data.numpy().squeeze()
+        
         theta = expl(x)[0]
+
+
         if our_method:
             deps = np.multiply(theta, h_x)
         else:
@@ -150,7 +153,7 @@ def eval_stability_2(test_tds, expl, scale, our_method=False):
 
     return distances
 
-def plot_distribution_h(test_tds, expl, plot_type='hx', results_path=False):
+def plot_distribution_h(test_tds, expl, plot_type='hx', fig = 0, results_path=False):
     
     values = []
     for i in tqdm(range(10000)):
@@ -182,6 +185,7 @@ def plot_distribution_h(test_tds, expl, plot_type='hx', results_path=False):
         ytitle = 'p(theta(x)^T h(x)'
         plot_color = 'purple'
 
+    plt.figure(fig)
     plt.hist(values, color = plot_color, edgecolor = '#CCE6FF', bins=20)
     plt.xlabel(xtitle)
     plt.ylabel(ytitle)
@@ -272,9 +276,9 @@ def main():
 
     # Make histogram 
     if args.demo:
-        plot_distribution_h(test_loader, expl, 'thetaxhx', results_path=results_path)
-        plot_distribution_h(test_loader, expl, 'thetax', results_path=results_path)
-        plot_distribution_h(test_loader, expl, 'hx', results_path=results_path)
+        plot_distribution_h(test_loader, expl, 'thetaxhx', fig=0, results_path=results_path)
+        plot_distribution_h(test_loader, expl, 'thetax', fig=1, results_path=results_path)
+        plot_distribution_h(test_loader, expl, 'hx', fig=2, results_path=results_path)
         return
     else:
         noises = np.arange(0, 0.21, 0.02)

@@ -517,6 +517,20 @@ def plot_dependencies(dictionary_values,
     return ax
 
 
+def bmatrix(a):
+    """Returns a LaTeX bmatrix
+
+    :a: numpy array
+    :returns: LaTeX bmatrix as a string
+    """
+    if len(a.shape) > 2:
+        raise ValueError('bmatrix can at most display two dimensions')
+    lines = str(a).replace('[', '').replace(']', '').splitlines()
+    rv = [r'\begin{bmatrix}']
+    rv += ['  ' + ' & '.join(l.split()) + r'\\' for l in lines]
+    rv +=  [r'\end{bmatrix}']
+    return '\n'.join(rv)
+
 def plot_theta_stability(model, input, pert_type = 'gauss', noise_level = 0.5,
                          samples = 5, save_path = None):
     """ Test stability of relevance scores theta for perturbations of an input.
@@ -557,6 +571,7 @@ def plot_theta_stability(model, input, pert_type = 'gauss', noise_level = 0.5,
     dists  = []
     for i,x in enumerate(inputs):
         pred = model(x)
+
         ax[0,i].imshow(x.data.cpu().numpy().squeeze())#, cmap = 'Greys', interpolation = 'nearest')
         ax[0,i].set_xticks([])
         ax[0,i].set_yticks([])
@@ -568,6 +583,7 @@ def plot_theta_stability(model, input, pert_type = 'gauss', noise_level = 0.5,
 
 
         theta = model.thetas.data.cpu().numpy().squeeze()
+
         if theta.shape[1] > 1:
             # Means this is model 1, scalar h and theta_i vector-sized. Choose which one ti visualize
             klass = pred.data.max(1)[1] # Predicted class
@@ -774,7 +790,9 @@ def noise_stability_plots(model, dataset, cuda, save_path):
     # find one example of each digit:
     examples = {}
     i = 0
-    while (not len(examples.keys()) == 10) and (i < len(dataset)):
+    # 2 len(dataset)
+    i = 200
+    while (not len(examples.keys()) == 10) and (i < 202): # and (i < 2):
         if dataset[i][1] not in examples:
             examples[dataset[i][1]] = dataset[i][0].view(1,1,28,28)
         i += 1

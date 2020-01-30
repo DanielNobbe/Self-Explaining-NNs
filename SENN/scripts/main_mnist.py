@@ -55,6 +55,11 @@ from SENN.eval_utils import estimate_dataset_lipschitz
 from robust_interpret.explainers import gsenn_wrapper
 from robust_interpret.utils import lipschitz_boxplot, lipschitz_argmax_plot, lipschitz_feature_argmax_plot
 
+from random import sample
+from tqdm import tqdm
+from collections import defaultdict
+import itertools
+
 
 def revert_to_raw(t):
     return ((t*.3081) + .1307)
@@ -272,6 +277,74 @@ def parse_args():
     return args
 
 
+def eval_stability_2(test_tds, expl, scale, our_method=False):
+    distances = []  
+
+    for i in tqdm(range(10000)):
+        x = Variable(test_tds.dataset[i][0].view(1,1,28,28), volatile = True)
+        h_x = expl.net.forward(x, h_options = -1).data.numpy().squeeze()
+        
+        theta = expl(x)[0]
+
+
+        if our_method:
+            deps = np.multiply(theta, h_x)
+        else:
+            deps = theta
+
+        # Add noise to sample and repeat
+        noise = Variable(scale*torch.randn(x.size()), volatile = True)
+        h_x = expl.net.forward(noise, h_options = -1).data.numpy().squeeze()
+        theta = expl(noise)[0]
+        if our_method:
+            deps_noise = np.multiply(theta, h_x)
+        else:
+            deps_noise = theta
+
+        dist = np.linalg.norm(deps - deps_noise)
+        distances.append(dist)
+
+    return distances
+
+def plot_distribution_h(test_tds, expl, plot_type='hx', fig = 0, results_path=False):
+    
+    values = []
+    for i in tqdm(range(10000)):
+        x = Variable(test_tds.dataset[i][0].view(1,1,28,28), volatile = True)
+        if plot_type == 'hx':
+            h_x = expl.net.forward(x, h_options = -1).squeeze().detach().numpy()
+            values.append(h_x)
+        elif plot_type == 'thetax':
+            theta = expl(x)[0]
+            values.append(theta)
+        elif plot_type == 'thetaxhx':
+            h_x = expl.net.forward(x, h_options = -1).squeeze().detach().numpy()
+            theta = expl(x)[0]
+            values.append(np.multiply(theta, h_x))
+
+
+    values = list(itertools.chain.from_iterable(values))
+
+    if plot_type == 'hx':
+        xtitle = 'Concept values h(x)'
+        ytitle = 'p(h(x))'
+        plot_color = 'blue'
+    elif plot_type == 'thetax':
+        xtitle = 'Theta values'
+        ytitle = 'p(theta(x))'
+        plot_color = 'pink'
+    elif plot_type == 'thetaxhx':
+        xtitle = 'Theta(x)^T h(x) values'
+        ytitle = 'p(theta(x)^T h(x)'
+        plot_color = 'purple'
+
+    plt.figure(fig)
+    plt.hist(values, color = plot_color, edgecolor = '#CCE6FF', bins=20)
+    plt.xlabel(xtitle)
+    plt.ylabel(ytitle)
+    if results_path:
+        plt.savefig(results_path + '/histogram' + plot_type + '.png', format = "png", dpi=300)
+
 def main():
     args = parse_args()
     args.nclasses = 10
@@ -354,159 +427,127 @@ def main():
                         verbose = False)
 
 
+    ### Faithfulness analysis
+    # correlations = np.array([])
+    # altcorrelations = np.array([])
+    # for i, (inputs, targets) in enumerate(tqdm(test_loader)):
+    #         # get the inputs
+    #         if args.demo:
+    #             if args.nconcepts == 5:
+    #                 if i != 0:
+    #                     continue
+    #                 else:
+    #                     args.demo = 0+1
+    #             elif args.nconcepts == 22:
+    #                 if i != 0:
+    #                     continue
+    #                 else:
+    #                     args.demo = 1+1
+    #         if args.cuda:
+    #             inputs, targets = inputs.cuda(), targets.cuda()
+    #         input_var = torch.autograd.Variable(inputs, volatile=True)
+    #         target_var = torch.autograd.Variable(targets)
+    #         if not args.noplot:
+    #             save_path = results_path + '/faithfulness' + str(i) + '/'
+    #             if not os.path.isdir(save_path):
+    #                 os.mkdir(save_path)
+    #         else:
+    #             save_path = None
+    #         corrs, altcorrs = expl.compute_dataset_consistency(input_var, targets = target_var, 
+    #         inputs_are_concepts = False, save_path = save_path, demo_mode = args.demo)
+    #         correlations = np.append(correlations, corrs)
+    #         altcorrelations = np.append(altcorrelations, altcorrs)
 
-    #### Debug single input
-    # x = next(iter(train_tds))[0]
-    # attr = expl(x, show_plot = False)
-    # pdb.set_trace()
+    # ### Consistency analysis
+    # correlations = np.array([])
+    # altcorrelations = np.array([])
+    # for i, (inputs, targets) in enumerate(tqdm(test_loader)):
+    #         # get the inputs
+    #         if args.demo:
+    #             if args.nconcepts == 5:
+    #                 if i != 0:
+    #                     continue
+    #                 else:
+    #                     args.demo = 27+1
+    #             elif args.nconcepts == 22:
+    #                 if i != 0:
+    #                     continue
+    #                 else:
+    #                     args.demo = 1+1
+    #         if args.cuda:
+    #             inputs, targets = inputs.cuda(), targets.cuda()
+    #         input_var = torch.autograd.Variable(inputs, volatile=True)
+    #         target_var = torch.autograd.Variable(targets)
+    #         if not args.noplot:
+    #             save_path = results_path + '/faithfulness' + str(i) + '/'
+    #             if not os.path.isdir(save_path):
+    #                 os.mkdir(save_path)
+    #         else:
+    #             save_path = None
+    #         corrs, altcorrs = expl.compute_dataset_consistency(input_var, targets = target_var, 
+    #         inputs_are_concepts = False, save_path = save_path, demo_mode = args.demo)
+    #         correlations = np.append(correlations, corrs)
+    #         altcorrelations = np.append(altcorrelations, altcorrs)
 
-    # #### Debug multi input
-    # x = next(iter(test_loader))[0] # Transformed
-    # x_raw = test_loader.dataset.test_data[:args.batch_size,:,:]
-    # attr = expl(x, x_raw = x_raw, show_plot = True)
-    # #pdb.set_trace()
+    # average_correlation = np.sum(correlations)/len(correlations)
+    # std_correlation = np.std(correlations)
+    # average_alt_correlation = np.sum(altcorrelations)/len(altcorrelations)
+    # std_alt_correlation = np.std(altcorrelations)
+    # print("Average correlation:", average_correlation)
+    # print("Standard deviation of correlations: ", std_correlation)
+    # print("Average alternative correlation:", average_alt_correlation)
+    # print("Standard deviation of alternative correlations: ", std_alt_correlation)
 
+    # box_plot_values = [correlations, altcorrelations]
 
-    ### Consistency analysis
-    correlations = np.array([])
-    altcorrelations = np.array([])
-    for i, (inputs, targets) in enumerate(tqdm(test_loader)):
-            # get the inputs
-            if args.demo:
-                if args.nconcepts == 5:
-                    if i != 0:
-                        continue
-                    else:
-                        args.demo = 0+1
-                elif args.nconcepts == 22:
-                    if i != 0:
-                        continue
-                    else:
-                        args.demo = 1+1
-            if args.cuda:
-                inputs, targets = inputs.cuda(), targets.cuda()
-            input_var = torch.autograd.Variable(inputs, volatile=True)
-            target_var = torch.autograd.Variable(targets)
-            if not args.noplot:
-                save_path = results_path + '/faithfulness' + str(i) + '/'
-                if not os.path.isdir(save_path):
-                    os.mkdir(save_path)
-            else:
-                save_path = None
-            corrs, altcorrs = expl.compute_dataset_consistency(input_var, targets = target_var, 
-            inputs_are_concepts = False, save_path = save_path, demo_mode = args.demo)
-            correlations = np.append(correlations, corrs)
-            altcorrelations = np.append(altcorrelations, altcorrs)
-
-
-    
-    average_correlation = np.sum(correlations)/len(correlations)
-    std_correlation = np.std(correlations)
-    average_alt_correlation = np.sum(altcorrelations)/len(altcorrelations)
-    std_alt_correlation = np.std(altcorrelations)
-    print("Average correlation:", average_correlation)
-    print("Standard deviation of correlations: ", std_correlation)
-    print("Average alternative correlation:", average_alt_correlation)
-    print("Standard deviation of alternative correlations: ", std_alt_correlation)
-
-    box_plot_values = [correlations, altcorrelations]
-
-    box = plt.boxplot(box_plot_values, patch_artist=True, labels=['theta(x)', 'theta(x) h(x)'])
-    colors = ['blue', 'purple']
-    for patch, color in zip(box['boxes'], colors):
-        patch.set_facecolor(color)
-    print("Figure saved to: ", results_path)
-    plt.savefig(results_path + '/faithfulness_box_plot.png', format = "png", dpi=300, verbose=True)
-
-
-    # # #### Debug argmax plot_theta_stability
-    # if args.h_type == 'input':
-    #     x = next(iter(test_tds))[0].numpy()
-    #     y = next(iter(test_tds))[0].numpy()
-    #     x_raw = (test_tds.test_data[0].float()/255).numpy()
-    #     y_raw = revert_to_raw(x)
-    #     att_x = expl(x, show_plot = False)
-    #     att_y = expl(y, show_plot = False)
-    #     lip = 1
-    #     lipschitz_argmax_plot(x_raw, y_raw, att_x,att_y, lip)# save_path=fpath)
-
-    #     #pdb.set_trace()
-
-
-    # ### 2. Single example lipschitz estimate with Black Box
-    # do_bb_stability_example = False # Aangepast: was False
-    # if do_bb_stability_example:
-    #     print('**** Performing lipschitz estimation for a single point ****')
-
-    #     idx = 0
-    #     print('Example index: {}'.format(idx))
-    #     #x = train_tds[idx][0].view(1,28,28).numpy()
-    #     x = next(iter(test_tds))[0].numpy()
-    #     x_raw = (test_tds.test_data[0].float()/255).numpy()
-    #     #x_raw = next(iter(train_tds))[0]
-
-    #     # args.optim     = 'gp'
-    #     # args.lip_eps   = 0.1
-    #     # args.lip_calls = 10
-    #     Results = {}
-
-    #     lip, argmax = expl.local_lipschitz_estimate(x, bound_type='box_std',
-    #                                             optim=args.optim,
-    #                                             eps=args.lip_eps,
-    #                                             n_calls=4*args.lip_calls,
-    #                                             njobs = 1,
-    #                                             verbose=2)
-    #     #pdb.set_trace()
-    #     Results['lip_argmax'] = (x, argmax, lip)
-    #     # .reshape(inputs.shape[0], inputs.shape[1], -1)
-    #     att = expl(x, None, show_plot=False)#.squeeze()
-    #     # .reshape(inputs.shape[0], inputs.shape[1], -1)
-    #     att_argmax = expl(argmax, None, show_plot=False)#.squeeze()
-
-    #     #pdb.set_trace()
-    #     Argmax_dict = {'lip': lip, 'argmax': argmax, 'x': x}
-    #     fpath = os.path.join(results_path, 'argmax_lip_gp_senn.pdf')
-    #     if args.h_type == 'input':
-    #         lipschitz_argmax_plot(x_raw, revert_to_raw(argmax), att, att_argmax, lip, save_path=fpath)
-    #     pickle.dump(Argmax_dict, open(
-    #         results_path + '/argmax_lip_gp_senn.pkl', "wb"))
-    #     pdb.set_trace()
-    #     # print(asd.asd)
-
-    # noise_stability_plots(model, test_tds, cuda = args.cuda, save_path = results_path)
-
-    # ### 3. Local lipschitz estimate over multiple samples with Black BOx Optim
-    # do_bb_stability = True # Aangepast, was: True
-    # if do_bb_stability:
-    #     print('**** Performing black-box lipschitz estimation over subset of dataset ****')
-    #     maxpoints = 20
-    #     #valid_loader 0 it's shuffled, so it's like doing random choice
-    #     mini_test = next(iter(valid_loader))[0][:maxpoints].numpy()
-    #     lips = expl.estimate_dataset_lipschitz(mini_test,
-    #                                        n_jobs=-1, bound_type='box_std',
-    #                                        eps=args.lip_eps, optim=args.optim,
-    #                                        n_calls=args.lip_calls, verbose=2)
-    #     pdb.set_trace()
-    #     Stability_dict = {'lips': lips}
-    #     pickle.dump(Stability_dict, open(results_path + '_stability_blackbox.pkl', "wb"))
-    #     All_Results['stability_blackbox'] = lips
+    # box = plt.boxplot(box_plot_values, patch_artist=True, labels=['theta(x)', 'theta(x) h(x)'])
+    # colors = ['blue', 'purple']
+    # for patch, color in zip(box['boxes'], colors):
+    #     patch.set_facecolor(color)
+    # print("Figure saved to: ", results_path)
+    # plt.savefig(results_path + '/faithfulness_box_plot.png', format = "png", dpi=300, verbose=True)
 
 
-    # add concept plot
-    if not args.noplot:
-        if (not args.demo) or (args.demo and args.nconcepts == 5):
-            concept_grid(model, test_loader, cuda = args.cuda, top_k = 10, save_path = results_path + '/concept_grid.png')
+    # Make histograms
+    plot_distribution_h(test_loader, expl, 'thetaxhx', fig=0, results_path=results_path)
+    plot_distribution_h(test_loader, expl, 'thetax', fig=1, results_path=results_path)
+    plot_distribution_h(test_loader, expl, 'hx', fig=2, results_path=results_path)
 
-    pickle.dump(All_Results, open(results_path + '_combined_metrics.pkl', "wb")) # Aangepast: .pkl was .format(dataname)
+    # Compute stabilites
+    noises = np.arange(0, 0.21, 0.02)
+    dist_dict, dist_dict_2 = {}, {}
+    for noise in noises:
+        distances = eval_stability_2(test_loader, expl, noise, False)
+        distances_2 = eval_stability_2(test_loader, expl, noise, True)
+        dist_dict[noise] = distances
+        dist_dict_2[noise] = distances_2
 
+    # Plot stability
+    distances, distances_2, noises = dist_dict, dist_dict_2, noises
+    means = [np.mean(distances[noise]) for noise in noises]
+    stds = [np.std(distances[noise]) for noise in noises]
 
+    means_min = [means[i] - stds[i] for i in range(len(means))]
+    means_max = [means[i] + stds[i] for i in range(len(means))]
 
+    means_2 = [np.mean(distances_2[noise]) for noise in noises]
+    stds_2 = [np.std(distances_2[noise]) for noise in noises]
 
-    # args.epoch_stats = epoch_stats
-    # save_path = args.results_path
-    # print("Save train/dev results to", save_path)
-    # args_dict = vars(args)
-    # pickle.dump(args_dict, open(save_path,'wb') )
+    means_min_2 = [means_2[i] - stds_2[i] for i in range(len(means_2))]
+    means_max_2 = [means_2[i] + stds_2[i] for i in range(len(means_2))]
+
+    fig, ax = plt.subplots(1)
+
+    ax.plot(noises, means, lw=2, label='theta(x)', color='blue')
+    ax.plot(noises, means_2, lw=2, label='theta(x)^T h(x)', color='purple')
+    ax.fill_between(noises, means_max, means_min, facecolor='blue', alpha=0.3)
+    ax.fill_between(noises, means_max_2, means_min_2, facecolor='purple', alpha=0.3)
+    ax.set_title('Stability')
+    ax.legend(loc='upper left')
+    ax.set_xlabel('Added noise')
+    ax.set_ylabel('Norm of relevance coefficients')
+    ax.grid()
+    fig.savefig(results_path + '/stablity' + '.png', format = "png", dpi=300)
 
 if __name__ == '__main__':
     main()
