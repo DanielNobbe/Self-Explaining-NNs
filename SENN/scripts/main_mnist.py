@@ -377,7 +377,7 @@ def main():
                     if i != 0:
                         continue
                     else:
-                        args.demo = 27+1
+                        args.demo = 0+1
                 elif args.nconcepts == 22:
                     if i != 0:
                         continue

@@ -216,6 +216,9 @@ class new_wrapper(gsenn_wrapper):
                     A = plot_dependencies(deps_to_plot, title= title , sort_rows = False, ax = ax[0])
                     B = plot_dependencies(thetas_to_plot, title='Theta dependencies', sort_rows = False, ax = ax[1])
                     
+                    if demo_mode:
+                        print("Input values: ", x)
+
                     plot_path = path + '/dependencies/'
                     if not os.path.isdir(plot_path):
                         os.mkdir(plot_path)
