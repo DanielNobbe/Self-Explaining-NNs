@@ -427,85 +427,85 @@ def main():
                         verbose = False)
 
 
-    ### Faithfulness analysis
-    # correlations = np.array([])
-    # altcorrelations = np.array([])
-    # for i, (inputs, targets) in enumerate(tqdm(test_loader)):
-    #         # get the inputs
-    #         if args.demo:
-    #             if args.nconcepts == 5:
-    #                 if i != 0:
-    #                     continue
-    #                 else:
-    #                     args.demo = 0+1
-    #             elif args.nconcepts == 22:
-    #                 if i != 0:
-    #                     continue
-    #                 else:
-    #                     args.demo = 1+1
-    #         if args.cuda:
-    #             inputs, targets = inputs.cuda(), targets.cuda()
-    #         input_var = torch.autograd.Variable(inputs, volatile=True)
-    #         target_var = torch.autograd.Variable(targets)
-    #         if not args.noplot:
-    #             save_path = results_path + '/faithfulness' + str(i) + '/'
-    #             if not os.path.isdir(save_path):
-    #                 os.mkdir(save_path)
-    #         else:
-    #             save_path = None
-    #         corrs, altcorrs = expl.compute_dataset_consistency(input_var, targets = target_var, 
-    #         inputs_are_concepts = False, save_path = save_path, demo_mode = args.demo)
-    #         correlations = np.append(correlations, corrs)
-    #         altcorrelations = np.append(altcorrelations, altcorrs)
+    ## Faithfulness analysis
+    correlations = np.array([])
+    altcorrelations = np.array([])
+    for i, (inputs, targets) in enumerate(tqdm(test_loader)):
+            # get the inputs
+            if args.demo:
+                if args.nconcepts == 5:
+                    if i != 0:
+                        continue
+                    else:
+                        args.demo = 0+1
+                elif args.nconcepts == 22:
+                    if i != 0:
+                        continue
+                    else:
+                        args.demo = 1+1
+            if args.cuda:
+                inputs, targets = inputs.cuda(), targets.cuda()
+            input_var = torch.autograd.Variable(inputs, volatile=True)
+            target_var = torch.autograd.Variable(targets)
+            if not args.noplot:
+                save_path = results_path + '/faithfulness' + str(i) + '/'
+                if not os.path.isdir(save_path):
+                    os.mkdir(save_path)
+            else:
+                save_path = None
+            corrs, altcorrs = expl.compute_dataset_consistency(input_var, targets = target_var, 
+            inputs_are_concepts = False, save_path = save_path, demo_mode = args.demo)
+            correlations = np.append(correlations, corrs)
+            altcorrelations = np.append(altcorrelations, altcorrs)
 
-    # ### Consistency analysis
-    # correlations = np.array([])
-    # altcorrelations = np.array([])
-    # for i, (inputs, targets) in enumerate(tqdm(test_loader)):
-    #         # get the inputs
-    #         if args.demo:
-    #             if args.nconcepts == 5:
-    #                 if i != 0:
-    #                     continue
-    #                 else:
-    #                     args.demo = 27+1
-    #             elif args.nconcepts == 22:
-    #                 if i != 0:
-    #                     continue
-    #                 else:
-    #                     args.demo = 1+1
-    #         if args.cuda:
-    #             inputs, targets = inputs.cuda(), targets.cuda()
-    #         input_var = torch.autograd.Variable(inputs, volatile=True)
-    #         target_var = torch.autograd.Variable(targets)
-    #         if not args.noplot:
-    #             save_path = results_path + '/faithfulness' + str(i) + '/'
-    #             if not os.path.isdir(save_path):
-    #                 os.mkdir(save_path)
-    #         else:
-    #             save_path = None
-    #         corrs, altcorrs = expl.compute_dataset_consistency(input_var, targets = target_var, 
-    #         inputs_are_concepts = False, save_path = save_path, demo_mode = args.demo)
-    #         correlations = np.append(correlations, corrs)
-    #         altcorrelations = np.append(altcorrelations, altcorrs)
+    ### Consistency analysis
+    correlations = np.array([])
+    altcorrelations = np.array([])
+    for i, (inputs, targets) in enumerate(tqdm(test_loader)):
+            # get the inputs
+            if args.demo:
+                if args.nconcepts == 5:
+                    if i != 0:
+                        continue
+                    else:
+                        args.demo = 27+1
+                elif args.nconcepts == 22:
+                    if i != 0:
+                        continue
+                    else:
+                        args.demo = 1+1
+            if args.cuda:
+                inputs, targets = inputs.cuda(), targets.cuda()
+            input_var = torch.autograd.Variable(inputs, volatile=True)
+            target_var = torch.autograd.Variable(targets)
+            if not args.noplot:
+                save_path = results_path + '/faithfulness' + str(i) + '/'
+                if not os.path.isdir(save_path):
+                    os.mkdir(save_path)
+            else:
+                save_path = None
+            corrs, altcorrs = expl.compute_dataset_consistency(input_var, targets = target_var, 
+            inputs_are_concepts = False, save_path = save_path, demo_mode = args.demo)
+            correlations = np.append(correlations, corrs)
+            altcorrelations = np.append(altcorrelations, altcorrs)
 
-    # average_correlation = np.sum(correlations)/len(correlations)
-    # std_correlation = np.std(correlations)
-    # average_alt_correlation = np.sum(altcorrelations)/len(altcorrelations)
-    # std_alt_correlation = np.std(altcorrelations)
-    # print("Average correlation:", average_correlation)
-    # print("Standard deviation of correlations: ", std_correlation)
-    # print("Average alternative correlation:", average_alt_correlation)
-    # print("Standard deviation of alternative correlations: ", std_alt_correlation)
+    average_correlation = np.sum(correlations)/len(correlations)
+    std_correlation = np.std(correlations)
+    average_alt_correlation = np.sum(altcorrelations)/len(altcorrelations)
+    std_alt_correlation = np.std(altcorrelations)
+    print("Average correlation:", average_correlation)
+    print("Standard deviation of correlations: ", std_correlation)
+    print("Average alternative correlation:", average_alt_correlation)
+    print("Standard deviation of alternative correlations: ", std_alt_correlation)
 
-    # box_plot_values = [correlations, altcorrelations]
+    box_plot_values = [correlations, altcorrelations]
 
-    # box = plt.boxplot(box_plot_values, patch_artist=True, labels=['theta(x)', 'theta(x) h(x)'])
-    # colors = ['blue', 'purple']
-    # for patch, color in zip(box['boxes'], colors):
-    #     patch.set_facecolor(color)
-    # print("Figure saved to: ", results_path)
-    # plt.savefig(results_path + '/faithfulness_box_plot.png', format = "png", dpi=300, verbose=True)
+    box = plt.boxplot(box_plot_values, patch_artist=True, labels=['theta(x)', 'theta(x) h(x)'])
+    colors = ['blue', 'purple']
+    for patch, color in zip(box['boxes'], colors):
+        patch.set_facecolor(color)
+    print("Figure saved to: ", results_path)
+    plt.savefig(results_path + '/faithfulness_box_plot.png', format = "png", dpi=300, verbose=True)
 
 
     # Make histograms
