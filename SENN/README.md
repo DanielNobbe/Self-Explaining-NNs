@@ -1,5 +1,5 @@
 # Revisiting Self-Explaining Neural Networks
-This folder contains all code used to generate the results used in the paper "Revisiting Self-Explaining Neural Networks", by J. Goedhart, L. Jansen, H. Lim, and D. Nobbe.
+This folder contains all code used to generate the results used in the paper "Revisiting Robust Interpretability of Self-Explaining NeuralNetworks", by J. Goedhart, L. Jansen, H. Lim, and D. Nobbe.
 
 # Prerequisites
 1. Clone or download this repository to a local disk. It includes the MNIST and COMPAS datasets, so that will take a few minutes. 
