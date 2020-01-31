@@ -40,7 +40,7 @@ from sklearn.preprocessing import StandardScaler
 from os.path import dirname, realpath
 from SENN.arglist import parse_args
 from SENN.utils import plot_theta_stability, generate_dir_names, plot_dependencies, plot_prob_drop
-from SENN.eval_utils import sample_local_lipschitz
+# from SENN.eval_utils import sample_local_lipschitz
 
 from SENN.models import GSENN
 from SENN.conceptizers import input_conceptizer, image_fcc_conceptizer
@@ -50,11 +50,11 @@ from SENN.trainers import VanillaClassTrainer, GradPenaltyTrainer
 import itertools
 
 from robust_interpret.explainers import gsenn_wrapper
-from robust_interpret.utils import lipschitz_feature_argmax_plot
+# from robust_interpret.utils import lipschitz_feature_argmax_plot
 
 import matplotlib.pyplot as plt
 import warnings
-warnings.simplefilter(action='ignore', category=(FutureWarning, UserWarning))
+warnings.simplefilter(action='ignore')
 
 import random
 
@@ -95,7 +95,7 @@ class new_wrapper(gsenn_wrapper):
             h_x = x.data.numpy().squeeze()
             f   = self.net.forward(x.reshape(1,-1))
             pred_class = f.argmax()
-            theta = self(x, y = pred_class).data.numpy().squeeze()
+            theta = self(x, y = pred_class).squeeze()
 
             deps_1 = theta
             deps_2 = np.multiply(theta, h_x)
@@ -147,7 +147,7 @@ class new_wrapper(gsenn_wrapper):
             h_x = x.data.numpy().squeeze()
             f = self.net.forward(x.reshape(1,-1))
             pred_class = f.argmax()
-            theta = self(x, y = pred_class).data.numpy().squeeze()
+            theta = self(x, y = pred_class).squeeze()
 
             deps_1_noise = theta
             deps_2_noise = np.multiply(theta, h_x)
@@ -217,7 +217,7 @@ class new_wrapper(gsenn_wrapper):
                     B = plot_dependencies(thetas_to_plot, title='Theta dependencies', sort_rows = False, ax = ax[1])
                     
                     if demo_mode:
-                        print("Input values: ", x)
+                        print("\n Input values: ", x)
 
                     plot_path = path + '/dependencies/'
                     if not os.path.isdir(plot_path):
@@ -235,29 +235,17 @@ class new_wrapper(gsenn_wrapper):
         """
             This is placed here to prevent having to update the robust_interpret package.
         """
-        # First, turn inputs into concepts
-        # if not inputs_are_concepts:
-        #     # x = x.type(torch.FloatTensor)
-        #     x = x.unsqueeze(dim = 0)
-        #     h_x = self.net.forward(x, h_options = -1)
-        #     # print("h_x: ",h_x)
-        #     f = self.net.forward(x, h_x = h_x, h_options = 1)
-        # # Then, use concepts to forward pass through the model
-        # # if inputs_are_concepts:
-        # else:
-        f   = self.net.forward(x.reshape(1,-1)) # model is compute_proba function, not neural model - we need to add output layer to compute probabilities. Not necessary for now TODO
+
+        f   = self.net.forward(x.reshape(1,-1)) 
         h_x = x
-        # So for now, we use self.net
-        # else:
-        #     f = self.model.forward(x.reshape(1,-1), h_x = h_x,  h_options = 1)
+
         pred_class = f.argmax()
-        # else:
-        #     pred_class = int(target.item()) # Add this to MNIST implementation
+
         attributions = self(x, y = target) # attributions are theta values (i think)
         deltas = []
         for i in range(h_x.shape[0]):
             x_p = x.clone()
-            x_p[i] = reference_value # uncomment this to be compatible with uci dataset #TODO: Make compatible with both compas and mnist
+            x_p[i] = reference_value 
             h_x_p = h_x.clone()
             h_x_p[i] = reference_value
             if inputs_are_concepts:
@@ -277,11 +265,9 @@ class new_wrapper(gsenn_wrapper):
             save_path_or = save_path + 'original'
             if not os.path.isdir(save_path):
                 os.mkdir(save_path)
-            # if not os.path.isdir(save_path_or):
-            #     os.mkdir(save_path_or)
+
             save_path_alt = save_path + 'alternative'
-            # if not os.path.isdir(save_path_alt):
-            #     os.mkdir(save_path_alt)
+
             ex_att = max( max(max(attributions_plot) , max(attributions_plot_alt)), 
             -min(min(attributions_plot) , min(attributions_plot_alt)))
             lim_prob_drop = max(max(prob_drops), -min(prob_drops))
@@ -291,21 +277,6 @@ class new_wrapper(gsenn_wrapper):
                 plot_prob_drop(attributions_plot_alt.squeeze(), prob_drops, save_path = save_path_alt, limits=limits)
         return prob_drops, attributions, attributions_plot_alt
 
-    # def compute_dependencies(self, x, reference_value = 0, plot = False, save_path = None, inputs_are_concepts = False):
-    #     if not inputs_are_concepts:
-    #             # x = x.type(torch.FloatTensor)
-    #             x = x.unsqueeze(dim = 0)
-    #             h_x = self.net.forward(x, h_options = -1)
-    #             f = self.net.forward(x, h_x = h_x, h_options = 1)
-    #         # Then, use concepts to forward pass through the model
-    #         # if inputs_are_concepts:
-    #     else:
-    #         h_x = x
-    #         # x = h_x # model is compute_proba function, not neural model - we need to add output layer to compute probabilities. Not necessary for now TODO
-    #         f   = self.net.forward(x.reshape(1,-1))
-    #     thetas = self(x) # attributions are theta values (i think)
-    #     dependencies = thetas.squeeze() * h_x.cpu().detach().numpy().squeeze()
-    #     return dependencies, thetas
 
 
 def find_conflicting(df, labels, consensus_delta = 0.2):
@@ -339,16 +310,14 @@ def find_conflicting(df, labels, consensus_delta = 0.2):
         for i in group:
             if (abs(scores.mean() - 0.5)< consensus_delta) or labels[i] == consensus:
                 # First condition: consensus is close to 50/50, can't consider this "outliers", so keep them all
-                #print(scores.mean(), len(group))
                 pruned_df.append(df.iloc[i])
                 pruned_lab.append(labels[i])
     return pd.DataFrame(pruned_df), np.array(pruned_lab)
 
 def load_compas_data(valid_size=0.1, shuffle=True, random_seed=2008, batch_size=64):
     df= pd.read_csv("data/propublica_data_for_fairml.csv")
-    # Binarize num of priors var? Or normalize it 0,1?
     df['Number_of_Priors'] = np.sqrt(df['Number_of_Priors'])/(np.sqrt(38))
-    compas_rating = df.score_factor.values # This is the target??
+    compas_rating = df.score_factor.values 
     df = df.drop("score_factor", 1)
 
     pruned_df, pruned_rating = find_conflicting(df, compas_rating)
@@ -357,15 +326,14 @@ def load_compas_data(valid_size=0.1, shuffle=True, random_seed=2008, batch_size=
 
     feat_names = list(x_train.columns)
     print("feature names", feat_names)
-    x_train = x_train.values # pandas -> np
+    x_train = x_train.values 
     x_test  = x_test.values
 
     Tds = []
     Loaders = []
     for (foldx, foldy) in [(x_train, y_train), (x_valid, y_valid), (x_test, y_test)]:
-        scaler = StandardScaler(with_std=False, with_mean=False) # DOn't scale to make consitient with LIME/SHAP script
+        scaler = StandardScaler(with_std=False, with_mean=False) 
         transformed = scaler.fit_transform(foldx)
-        #transformed = foldx
         tds = TensorDataset(torch.from_numpy(transformed).float(),
                             torch.from_numpy(foldy).view(-1, 1).float())
         loader = DataLoader(tds, batch_size=batch_size, shuffle=False)
@@ -401,7 +369,7 @@ def main():
 
     aggregator   = additive_scalar_aggregator(args.concept_dim,args.nclasses)
 
-    model        = GSENN(conceptizer, parametrizer, aggregator)#, learn_h = args.train_h)
+    model        = GSENN(conceptizer, parametrizer, aggregator)
 
     if args.theta_reg_type == 'unreg':
         trainer = VanillaClassTrainer(model, args)
@@ -426,60 +394,9 @@ def main():
 
     results = {}
 
-    # train_acc = trainer.validate(train_loader, fold = 'train')
-    # valid_acc = trainer.validate(valid_loader, fold = 'valid')
-    # test_acc = trainer.validate(test_loader, fold = 'test')
-
-    # results['train_accuracy'] = train_acc
-    # results['valid_accuracy']  = valid_acc
-    # results['test_accuracy']  = test_acc
-    # print('Train accuracy: {:8.2f}'.format(train_acc))
-    # print('Valid accuracy: {:8.2f}'.format(valid_acc))
-    # print('Test accuracy: {:8.2f}'.format(test_acc))
-
-
-    #noise_stability_plots(model, test_tds, cuda = args.cuda, save_path = results_path)
-
-    # lips, argmaxes = sample_local_lipschitz(model, test, mode = 2, top_k = 10, max_distance = 3)
-
-    # max_lip = lips.max()
-    # imax = np.unravel_index(np.argmax(lips), lips.shape)[0]
-    # jmax = argmaxes[imax][0][0]
-    # print('Max Lip value: {}, attained for pair ({},{})'.format(max_lip, imax, jmax))
-
-    # x      = test.tensors[0][imax]
-    # argmax = test.tensors[0][jmax]
-
-    # pred_x = model(Variable(x.view(1,-1), volatile = True)).data
-    # att_x = model.thetas.data.squeeze().numpy().squeeze()
-
-    # pred_argmax = model(Variable(argmax.view(1,-1), volatile = True)).data
-    # att_argmax = model.thetas.data.squeeze().numpy().squeeze()
-
-    # pdb.set_trace()
-    # results['x_max']      = x
-    # results['x_argmax']      = argmax
-    # results['test_discrete_glip']      = lips
-    # results['test_discrete_glip_argmaxes'] = argmaxes
-
-
-    # print('Local g-Lipschitz estimate: {:8.2f}'.format(lips.mean()))
-
-    # fpath = os.path.join(results_path, 'discrete_lip_gsenn')
-    # ppath = os.path.join(results_path, 'relevance_argmax_gsenn')
-
-    # pickle.dump(results,  open(fpath+'.pkl',"wb")) # FOrmerly model_metrics
-    #
-    # print(ppath)
-    # lipschitz_feature_argmax_plot(x, argmax, att_x, att_argmax,
-    #                               feat_names = feat_names,
-    #                               digits=2, figsize=(5,6), widths=(2,3),
-    #                               save_path=ppath + '.pdf')
-    # Added by Lennert:
     # set up input arguments for GSENN wrapper
     features = None
     classes = [0, 1]
-    model.eval()
 
     #
     expl = new_wrapper(model,
@@ -491,14 +408,15 @@ def main():
                         skip_bias = True,
                         verbose = False)
 
-    ### Consistency analysis
+    ### Faithfulness analysis
+
+    print("Performing faithfulness analysis...")
+
 
     correlations = np.array([])
     altcorrelations = np.array([])
     for i, (inputs, targets) in enumerate(tqdm(test_loader)):
-            # get the inputs
-            # if model.cuda:
-            #     inputs, targets = inputs.cuda(), targets.cuda()
+
             if args.demo:
                 if i != 0:
                     continue
@@ -516,7 +434,6 @@ def main():
             inputs_are_concepts = False, save_path = save_path, demo_mode=args.demo)
             correlations = np.append(correlations, corrs)
             altcorrelations = np.append(altcorrelations, altcorrs)
-            # print("i: ", i)
 
     average_correlation = np.sum(correlations)/len(correlations)
     std_correlation = np.std(correlations)
@@ -527,62 +444,29 @@ def main():
     print("Average alternative correlation:", average_alt_correlation)
     print("Standard deviation of alternative correlations: ", std_alt_correlation)
 
-    box_plot_values = [correlations, altcorrelations]
+    print("Generating Faithfulness correlation box plot..")
 
+    box_plot_values = [correlations, altcorrelations]
+    plt.close('all')
     box = plt.boxplot(box_plot_values, patch_artist=True, labels=['theta(x)', 'theta(x) h(x)'])
     colors = ['blue', 'purple']
     for patch, color in zip(box['boxes'], colors):
         patch.set_facecolor(color)
     plt.savefig(results_path + '/faithfulness_box_plot.png', format = "png", dpi=300)
 
+    if args.noplot:
+        stabilities_1, stabilities_2 = expl.compute_stability(test_loader)
+        stabilities = [stabilities_1, stabilities_2]
+        plt.close('all')
+        box = plt.boxplot(stabilities, patch_artist=True, labels=['theta(x)', 'theta(x) h(x)'])
+        colors = ['blue', 'purple']
+        for patch, color in zip(box['boxes'], colors):
+            patch.set_facecolor(color)
+        plt.savefig(results_path + '/stability' + '.png', format = "png", dpi=300)
 
-    # expl = gsenn_wrapper(model,
-    #                     mode = 'classification',
-    #                     input_type = 'feature',
-    #                     feature_names = 'features',
-    #                     class_names = 'classes',
-    #                     train_data = train_loader,
-    #                     skip_bias = True,
-    #                     verbose = False)
-
-    # Iteratively perform faithfulness analysis on test inputs
-    # correlations = np.array([])
-    # altcorrelations = np.array([])
-    # for i, (inputs, targets) in enumerate(test_loader):
-    #         # get the inputs
-    #         # if model.cuda:
-    #         #     inputs, targets = inputs.cuda(), targets.cuda()
-    #         input_var = torch.autograd.Variable(inputs, volatile=True)
-    #         target_var = torch.autograd.Variable(targets)
-    #         save_path = results_path + '/faithfulness' + str(i) + '/'
-    #         if not os.path.isdir(save_path):
-    #             os.mkdir(save_path)
-    #         corrs, altcorrs = expl.compute_dataset_consistency(input_var, targets = target_var, inputs_are_concepts = False, save_path = save_path)
-    #         correlations = np.append(correlations, corrs)
-    #         altcorrelations = np.append(altcorrelations, altcorrs)
-    #         print("i: ", i)
-    #         # if i > 0:
-    #         #     print("Breaking out of loop")
-    #         #     break
-    # average_correlation = np.sum(correlations)/len(correlations)
-    # std_correlation = np.std(correlations)
-    # average_alt_correlation = np.sum(altcorrelations)/len(altcorrelations)
-    # std_alt_correlation = np.std(altcorrelations)
-    # print("Average correlation:", average_correlation)
-    # print("Standard deviation of correlations: ", std_correlation)
-    # print("Average alternative correlation:", average_alt_correlation)
-    # print("Standard deviation of alternative correlations: ", std_alt_correlation)
-
-    ## JOOSJE: STABILITIES
-    # stabilities_1, stabilities_2 = expl.compute_stability(test_loader)
-    # stabilities = [stabilities_1, stabilities_2]
-
-    # box = plt.boxplot(stabilities, patch_artist=True, labels=['theta(x)', 'theta(x) h(x)'])
-    # colors = ['blue', 'purple']
-    # for patch, color in zip(box['boxes'], colors):
-    #     patch.set_facecolor(color)
-    # plt.show()
     if args.demo:
+        print("Generating theta, h and theta*h distribution histograms...")
+        
         plot_types = ['thetaxhx', 'hx', 'thetax']
         for plot_type in plot_types:
             values = expl.plot_distribution_h(test_loader, plot_type=plot_type)

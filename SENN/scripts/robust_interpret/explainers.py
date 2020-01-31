@@ -31,58 +31,13 @@ from tqdm import tqdm
 from sklearn.externals.joblib import Parallel, delayed
 from sklearn.metrics.pairwise import pairwise_distances
 
-# UTILS
-from .utils import deepexplain_plot
-from .utils import rgb2gray_converter
-from .utils import topk_argmax
 
 import pdb
-
-
-#   - make all wrappers uniform by passing model, not just predict_proba method,
-#     since DeepX needs the full model. Can then take whatever method is required inside each class.
-#   - seems like for deepexplain can choose between true and predicted class easlity. Add that option.
 
 try:
     from SENN.utils import plot_prob_drop
 except:
     print('Couldnt find SENN')
-
-# def test():
-#     print("5")
-
-# def make_keras_picklable():
-#     def __getstate__(self):
-#         model_str = ""
-#         with tempfile.NamedTemporaryFile(suffix='.hdf5', delete=True) as fd:
-#             keras.models.save_model(self, fd.name, overwrite=True)
-#             model_str = fd.read()
-#         d = {'model_str': model_str}
-#         return d
-
-#     def __setstate__(self, state):
-#         with tempfile.NamedTemporaryFile(suffix='.hdf5', delete=True) as fd:
-#             fd.write(state['model_str'])
-#             fd.flush()
-#             model = keras.models.load_model(fd.name)
-
-#         self.__dict__ = model.__dict__
-
-#     cls = keras.models.Model
-#     cls.__getstate__ = __getstate__
-#     cls.__setstate__ = __setstate__
-
-
-# def _parallel_lipschitz(wrapper, i, x, bound_type, eps, n_calls):
-#     # make_keras_picklable()
-#     print('\n\n ***** PARALLEL : Example ' + str(i) + '********')
-#     print(wrapper.net.__dict__.keys())
-#     if 'model' in wrapper.net.__dict__.keys():
-#         l, _ = wrapper.local_lipschitz_estimate(
-#             x, eps=eps, bound_type=bound_type, n_calls=n_calls)
-#     else:
-#         l = None
-#     return l
 
 
 class explainer_wrapper(object):
@@ -105,162 +60,7 @@ class explainer_wrapper(object):
                 'mean': self.train_data.mean(0),
                 'std': self.train_data.std(0)
             }
-            # pprint(self.train_stats)
-
-    # def estimate_dataset_lipschitz(self, dataset, continuous=True, eps=1, maxpoints=None,
-    #                                optim='gp', bound_type='box', n_jobs=1, n_calls=10, verbose=False):
-    #     """
-    #         Continuous and discrete space version.
-
-    #     """
-    #     # make_keras_picklable()
-    #     n = len(dataset)
-    #     if maxpoints and n > maxpoints:
-    #         dataset_filt = dataset[np.random.choice(n, maxpoints)]
-    #     else:
-    #         dataset_filt = dataset[:]
-    #     if n_jobs > 1:
-    #         Lips = Parallel(n_jobs=n_jobs, max_nbytes=1e6, verbose=verbose)(delayed(_parallel_lipschitz)(
-    #             self, i=i, x=x, bound_type=bound_type, eps=eps, n_calls=n_calls) for i, x in enumerate(dataset_filt))
-    #     else:
-    #         Lips = []
-    #         for x in dataset_filt:
-    #             l, _ = self.local_lipschitz_estimate(x, optim=optim,
-    #                                                  bound_type=bound_type, eps=eps, n_calls=n_calls, verbose=verbose)
-    #             Lips.append(l)
-    #     print(
-    #         'Missed points: {}/{}'.format(sum(x is None for x in Lips), len(dataset_filt)))
-    #     Lips = np.array([l for l in Lips if l])
-    #     return Lips
-
-    # # def lipschitz_ratio(self, x=None, y=None, reshape=None, minus=False):
-    # #     """
-    # #         If minus = True, returns minus this quantitiy.
-
-    # #         || f(x) - f(y) ||/||x - y||
-
-    # #     """
-    # #     # NEed this ungly hack because skopt sends lists
-    # #     if type(x) is list:
-    # #         x = np.array(x)
-    # #     if type(y) is list:
-    # #         y = np.array(y)
-    # #     if reshape is not None:
-    # #         # Necessary because gpopt requires to flatten things, need to restrore expected sshape here
-    # #         x = x.reshape(reshape)
-    # #         y = y.reshape(reshape)
-    # #     #print(x.shape, x.ndim)
-    # #     multip = -1 if minus else 1
-    # #     return multip * np.linalg.norm(self(x) - self(y)) / np.linalg.norm(x - y)
-
-    # def local_lipschitz_estimate(self, x, optim='gp', eps=None, bound_type='box',
-    #                              clip=True, n_calls=100, njobs = -1, verbose=False):
-    #     """
-    #         Compute one-sided lipschitz estimate for explainer. Adequate for local
-    #          Lipschitz, for global must have the two sided version. This computes:
-
-    #             max_z || f(x) - f(z)|| / || x - z||
-
-    #         Instead of:
-
-    #             max_z1,z2 || f(z1) - f(z2)|| / || z1 - z2||
-
-    #         If eps provided, does local lipzshitz in:
-    #             - box of width 2*eps along each dimension if bound_type = 'box'
-    #             - box of width 2*eps*va, along each dimension if bound_type = 'box_norm' (i.e. normalize so that deviation is eps % in each dim )
-    #             - box of width 2*eps*std along each dimension if bound_type = 'box_std'
-
-    #         max_z || f(x) - f(z)|| / || x - z||   , with f = theta
-
-    #         clip: clip bounds to within (min, max) of dataset
-
-    #     """
-    #     # Compute bounds for optimization
-    #     if eps is None:
-    #         # If want to find global lipzhitz ratio maximizer - search over "all space" - use max min bounds of dataset fold of interest
-    #         # gp can't have lower bound equal upper bound - so move them slightly appart
-    #         lwr = self.train_stats['min'].flatten() - 1e-6
-    #         upr = self.train_stats['max'].flatten() + 1e-6
-    #     elif bound_type == 'box':
-    #         lwr = (x - eps).flatten()
-    #         upr = (x + eps).flatten()
-    #     elif bound_type == 'box_std':
-    #         # gp can't have lower bound equal upper bound - so set min std to 0.001
-    #         lwr = (
-    #             x - eps * np.maximum(self.train_stats['std'], 0.001)).flatten()
-    #         upr = (
-    #             x + eps * np.maximum(self.train_stats['std'], 0.001)).flatten()
-    #     if clip:
-    #         lwr = lwr.clip(min=self.train_stats['min'].min())
-    #         upr = upr.clip(max=self.train_stats['max'].max())
-    #     bounds = list(zip(*[lwr, upr]))
-    #     if x.ndim > 2:
-    #         # This is an image, will need to reshape
-    #         orig_shape = x.shape
-    #         x = x.flatten()
-    #     else:
-    #         orig_shape = x.shape
-
-    #     # Run optimization
-    #     if optim == 'gp':
-    #         print('Running BlackBox Minimization with Bayesian Optimization')
-    #         # Need minus because gp only has minimize method
-    #         f = partial(self.lipschitz_ratio, x,
-    #                     reshape=orig_shape, minus=True)
-    #         res = gp_minimize(f, bounds, n_calls=n_calls,
-    #                           verbose=verbose, n_jobs=njobs)
-    #     elif optim == 'gbrt':
-    #         print('Running BlackBox Minimization with Gradient Boosted Trees')
-    #         f = partial(self.lipschitz_ratio, x,
-    #                     reshape=orig_shape, minus=True)
-    #         res = gbrt_minimize(f, bounds, n_calls=n_calls,
-    #                             verbose=verbose, n_jobs=njobs)
-
-    #     lip, x_opt = -res['fun'], np.array(res['x'])
-    #     if verbose:
-    #         print(lip, np.linalg.norm(x - x_opt))
-    #     return lip, x_opt.reshape(orig_shape)
-
-    # def estimate_discrete_dataset_lipschitz(self, dataset, eps = None, top_k = 1,
-    #     metric = 'euclidean', same_class = False):
-    #     """
-    #         For every point in dataset, find pair point y in dataset that maximizes
-    #         Lipschitz: || f(x) - f(y) ||/||x - y||
-
-    #         Args:
-    #             - dataset: a tds obkect
-    #             - top_k : how many to return
-    #             - max_distance: maximum distance between points to consider (radius)
-    #             - same_class: ignore cases where argmax g(x) != g(y), where g is the prediction model
-    #     """
-    #     Xs  = dataset
-    #     n,d = Xs.shape
-    #     Fs = self(Xs)
-    #     Preds_prob = self.model(Xs)
-    #     Preds_class = Preds_prob.argmax(axis=1)
-    #     num_dists = pairwise_distances(Fs)#, metric = 'euclidean')
-    #     den_dists = pairwise_distances(Xs, metric = metric) # Or chebyshev?
-    #     if eps is not None:
-    #         nonzero = np.sum((den_dists > eps))
-    #         total   = den_dists.size
-    #         print('Number of zero denom distances: {} ({:4.2f}%)'.format(
-    #             total - nonzero, 100*(total-nonzero)/total))
-    #         den_dists[den_dists > eps] = -1.0 #float('inf')
-    #     # Same with self dists
-    #     den_dists[den_dists==0] = -1 #float('inf')
-    #     if same_class:
-
-    #         for i in range(n):
-    #             for j in range(n):
-    #                 if Preds_class[i] != Preds_class[j]:
-    #                     den_dists[i,j] = -1
-
-    #     ratios = (num_dists/den_dists)
-    #     argmaxes = {k: [] for k in range(n)}
-    #     vals, inds = topk_argmax(ratios, top_k)
-    #     argmaxes = {i:  [(j,v) for (j,v) in zip(inds[i,:],vals[i,:])] for i in range(n)}
-    #     return vals.squeeze(), argmaxes
-
+  
     def compute_dataset_consistency(self,  dataset, reference_value = 0, save_path = None):
         """
             does compute_prob_drop for all dataset, returns stats and plots
@@ -275,17 +75,11 @@ class explainer_wrapper(object):
             att = att.squeeze()
             drops.append(p_d)
             atts.append(att)
-            #pdb.set_trace()
-            #assert len(p_d).shape[0] == atts.shape[0], "Attributions has wrong size"
-            #pdb.set_trace()
+
             corrs.append(np.corrcoef(p_d, att)[0,1]) # Compute correlation per sample, then aggreate
 
         corrs = np.array(corrs)
-        # pdb.set_trace()
-        # drops = np.stack(drops)
-        # atts  = np.stack(atts)
-        #
-        # np.corrcoef(drops.flatten(), atts.flatten())
+
         return corrs
 
     def compute_prob_drop(self, x, reference_value = 0, plot = True, save_path = None):
@@ -338,7 +132,6 @@ class explainer_wrapper(object):
                 ax.axis('off')
                 deepexplain_plot(a, xi=x[i], axis=axes[row, col * 2 + 1],
                                  dilation=.5, percentile=99, alpha=.2).set_title('Attributions')
-                #deepexplain_plot(a, xi = x[i], axis=axes[row,col*2+1],dilation=.5, percentile=99, alpha=.2).set_title('Attributions')
         plt.show()
 
 
@@ -346,8 +139,6 @@ class gsenn_wrapper(explainer_wrapper):
     """
         Wrapper around gsenn
     """
-    # def __init__(self, keras_wrapper, explainer, multiclass, feat_names, class_to_explain, train_data, nsamples = 100):
-    #     super().__init__(keras_wrapper.predict, None, multiclass, feat_names, train_data)
     def __init__(self, model, mode,input_type, multiclass=False, feature_names=None,
                  class_names=None, train_data=None, num_features=None, categorical_features=None,
                  nsamples=100, skip_bias = True, verbose=False):

@@ -1,86 +1,20 @@
-# SENN
-Self-Explaining Neural Networks
+# Revisiting Self-Explaining Neural Networks
+This folder contains all code used to generate the results used in the paper "Revisiting Self-Explaining Neural Networks", by J. Goedhart, L. Jansen, H. Lim, and D. Nobbe.
 
-## Dependencies
-
-#### Major:
-* python (>3.0)
-* pytorch (=4.0)
-
-
-#### Minor
-* numpy
-* matplotlib
-* nltk (needed only for text applications)
-* torchtext (needed only for text applications)
-* shapely
-* squarify
-
-## Installation
-
-It's highly recommended that the following steps be done **inside a virtual environment** (e.g., via `virtualenv` or `anaconda`).
+# Prerequisites
+1. Clone or download this repository to a local disk. It includes the MNIST and COMPAS datasets, so that will take a few minutes. 
+2. Create a new conda environment (from a terminal in this folder) with the following command:
+conda create -f SENN_environment.yml --name RSENN
 
 
-#### Install prereqs
+# Notebook
+With the notebook, all results can be generated. Do not run all cells at once, but only select the cells required, as some of them will trigger a lengthy training process. Pre-trained models are included in the repository.
 
-First install pytorch.
-<!-- Installing Pytorch. Find approriate version download link [here](https://pytorch.org/) e.g.:
+# Main file
+The main.py file in this folder can also be used for generating the same results. Run "python main.py --help" to see the possible flags.
+Some extra information:
+mnist5: Model with 5 concepts that can be used on the MNIST dataset.
+mnist22: Model with 22 concepts that can be used on the MNIST dataset. We refer to our paper for more information on concepts.
+Demo mode: Generates all plots for the specified model, with the exception of the faithfulness box plots.
+noplot mode: Generates the faithfulness box plots.
 
-```
-pip3 install http://download.pytorch.org/whl/cpu/torch-0.4.1-cp36-cp36m-linux_x86_64.whl  # For CPU
-# pip3 install https://download.pytorch.org/whl/cu90/torch-0.4.1-cp36-cp36m-linux_x86_64.whl # For GPU - CUDA 9.0 in python 3.6
-# pip3 install https://download.pytorch.org/whl/cu91/torch-0.4.0-cp36-cp36m-linux_x86_64.whl # For GPU - CUDA 9.1 in python 3.6
-# etc.....
-pip3 install torchvision
-``` -->
-Then install remaining dependencies
-```
-pip3 install -r requirements.txt
-```
-Finally, install this package
-```
-git clone git@github.com:dmelis/SENN.git
-cd SENN
-pip3 install ./
-```
-
-<!-- ## Data preparation:
-
-Invoke the makefile with the desired dataset as argument (options currently supported: [`ets`, `hasy`,`leafsnap`]), e.g.:
-
-```
-make hasy
-
-```
-
-Or generate all of them with `make all`.
-
-NOTE: Since the ETS data is from LDC (and thus not public), I hid it under a password in my website. Ask me and I'll provide it directly. After executing `make ets` you'll be prompted for this password.
-
-<!-- ```
-  python setup.py install
-``` --> -->
-
-## How to use
-
-To train models from scratch:
-```
-python scripts/main_mnist.py --train
-```
-<!-- ```
-python -m scripts.main_mnist --train-classif --train-meta
-``` -->
-
-To use pretrained models:
-```
-python scripts/main_mnist.py
-```
-
-
-## Overall Code Structure
-
-
-* aggregators.py - defines the Aggregation functions
-* conceptizers.py - defines the functions that encode inputs into concepts (h(x))
-* parametrizers.oy - defines the functions that generate parameters from inputs (theta(x))
-* trainers.py - objectives, losses and training utilities

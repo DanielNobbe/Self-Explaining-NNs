@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 """
 # Ignore Future Warnings (Joosje)
 import warnings
-warnings.simplefilter(action='ignore', category=(FutureWarning, UserWarning))
+warnings.simplefilter(action='ignore')
 
 # Standard Imports
 import sys, os
@@ -47,13 +47,11 @@ from SENN.models import GSENN
 from SENN.conceptizers import image_fcc_conceptizer, image_cnn_conceptizer, input_conceptizer
 
 from SENN.parametrizers import image_parametrizer
-from SENN.aggregators import linear_scalar_aggregator, additive_scalar_aggregator
+from SENN.aggregators import additive_scalar_aggregator
 from SENN.trainers import HLearningClassTrainer, VanillaClassTrainer, GradPenaltyTrainer
 from SENN.utils import plot_theta_stability, generate_dir_names, noise_stability_plots, concept_grid, plot_prob_drop, plot_dependencies
-# from SENN.eval_utils import estimate_dataset_lipschitz
 
 from robust_interpret.explainers import gsenn_wrapper
-# from robust_interpret.utils import lipschitz_boxplot, lipschitz_argmax_plot, lipschitz_feature_argmax_plot
 
 from random import sample
 from tqdm import tqdm
@@ -269,7 +267,7 @@ def eval_stability_2(test_tds, expl, scale, our_method=False):
     return distances
 
 def plot_distribution_h(test_tds, expl, plot_type='hx', fig = 0, results_path=False):
-    
+    plt.close('all')
     values = []
     for i in tqdm(range(10000)):
         x = Variable(test_tds.dataset[i][0].view(1,1,28,28), volatile = True)
@@ -390,6 +388,8 @@ def main():
 
     ## Faithfulness analysis. Generates faithfulness plots, dependency plots and correlation scores.
 
+    print("Performing faithfulness analysis...")
+
     correlations = np.array([])
     altcorrelations = np.array([])
     for i, (inputs, targets) in enumerate(tqdm(test_loader)):
@@ -440,7 +440,7 @@ def main():
         patch.set_facecolor(color)
     plt.savefig(results_path + '/faithfulness_box_plot.png', format = "png", dpi=300, verbose=True)
 
-    if not args.noplot:
+    if not args.noplot and args.nconcepts == 5:
 
         print("Generating theta, h and theta*h distribution histograms...")
 
@@ -487,7 +487,10 @@ def main():
         ax.set_xlabel('Added noise')
         ax.set_ylabel('Norm of relevance coefficients')
         ax.grid()
-        fig.savefig(results_path + '/stablity' + '.png', format = "png", dpi=300)
+        fig.savefig(results_path + '/stability' + '.png', format = "png", dpi=300)
+
+        if (not args.demo) or (args.demo and args.nconcepts == 5):
+            concept_grid(model, test_loader, cuda = args.cuda, top_k = 10, save_path = results_path + '/concept_grid.png')
 
     print("Finished")
 
