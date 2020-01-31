@@ -40,7 +40,6 @@ from sklearn.preprocessing import StandardScaler
 from os.path import dirname, realpath
 from SENN.arglist import parse_args
 from SENN.utils import plot_theta_stability, generate_dir_names, plot_dependencies, plot_prob_drop
-# from SENN.eval_utils import sample_local_lipschitz
 
 from SENN.models import GSENN
 from SENN.conceptizers import input_conceptizer, image_fcc_conceptizer
@@ -50,7 +49,6 @@ from SENN.trainers import VanillaClassTrainer, GradPenaltyTrainer
 import itertools
 
 from robust_interpret.explainers import gsenn_wrapper
-# from robust_interpret.utils import lipschitz_feature_argmax_plot
 
 import matplotlib.pyplot as plt
 import warnings
