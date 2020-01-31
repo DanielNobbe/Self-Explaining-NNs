@@ -50,10 +50,10 @@ from SENN.parametrizers import image_parametrizer
 from SENN.aggregators import linear_scalar_aggregator, additive_scalar_aggregator
 from SENN.trainers import HLearningClassTrainer, VanillaClassTrainer, GradPenaltyTrainer
 from SENN.utils import plot_theta_stability, generate_dir_names, noise_stability_plots, concept_grid, plot_prob_drop, plot_dependencies
-from SENN.eval_utils import estimate_dataset_lipschitz
+# from SENN.eval_utils import estimate_dataset_lipschitz
 
 from robust_interpret.explainers import gsenn_wrapper
-from robust_interpret.utils import lipschitz_boxplot, lipschitz_argmax_plot, lipschitz_feature_argmax_plot
+# from robust_interpret.utils import lipschitz_boxplot, lipschitz_argmax_plot, lipschitz_feature_argmax_plot
 
 from random import sample
 from tqdm import tqdm
@@ -122,19 +122,13 @@ class new_wrapper(gsenn_wrapper):
             target = targets[i]
             p_d, att, deps = self.compute_prob_drop(x, target = target, inputs_are_concepts = inputs_are_concepts,
              save_path = path, alternative = True, plot = True)
-            # p_d is now theta*h for each concept.
             p_d = p_d.squeeze()
             att = att.squeeze()
             drops.append(p_d)
             atts.append(att)
-            #pdb.set_trace()
-            #assert len(p_d).shape[0] == atts.shape[0], "Attributions has wrong size"
-            #pdb.set_trace()
 
-            # print("attributions: ", atts)
 
             corrs.append(np.corrcoef(p_d, att)[0,1])
-            # deps, thetas = self.compute_dependencies(x)
             altcorrs.append(np.corrcoef(p_d, deps)[0,1])
             if plot_alt_dependencies:
 
@@ -159,11 +153,7 @@ class new_wrapper(gsenn_wrapper):
 
         corrs = np.array(corrs)
         altcorrs = np.array(altcorrs)
-        # pdb.set_trace()
-        # drops = np.stack(drops)
-        # atts  = np.stack(atts)
-        #
-        # np.corrcoef(drops.flatten(), atts.flatten())
+
         return corrs, altcorrs
 
     def compute_prob_drop(self, x, target = None, reference_value = 0, plot = False, save_path = None, 
@@ -171,35 +161,26 @@ class new_wrapper(gsenn_wrapper):
 
         # First, turn inputs into concepts
         if not inputs_are_concepts:
-            # x = x.type(torch.FloatTensor)
             x = x.unsqueeze(dim = 0)
             h_x = self.net.forward(x, h_options = -1)
-            # print("h_x: ",h_x)
             f = self.net.forward(x, h_x = h_x, h_options = 1)
         # Then, use concepts to forward pass through the model
-        # if inputs_are_concepts:
         else:
-            f   = self.net.forward(x.reshape(1,-1)) # model is compute_proba function, not neural model - we need to add output layer to compute probabilities. Not necessary for now TODO
-        # So for now, we use self.net
-        # else:
-        #     f = self.model.forward(x.reshape(1,-1), h_x = h_x,  h_options = 1)
-        # pred_class = f.argmax()
+            f   = self.net.forward(x.reshape(1,-1)) 
+
         if target.nelement()>1:
                 _, target = torch.max(target)
-        attributions = self(x, y = target) # attributions are theta values (i think)
+        attributions = self(x, y = target) 
         deltas = []
         for i in range(h_x.shape[1]):
             x_p = x.clone()
-            # x_p[i] = reference_value # uncomment this to be compatible with uci dataset
             h_x_p = h_x.clone()
             h_x_p[:,i, :] = reference_value
             if inputs_are_concepts:
                 f_p = self.net(x_p.reshape(1,-1))
             else:
                 f_p = self.net.forward(x, h_x = h_x_p,  h_options = 1)
-            # print("outcome: ", f_p, f)
             delta_i = (f - f_p)[0,target]
-            # print("delta_i: ", delta_i)
             deltas.append(delta_i.cpu().detach().numpy())
         prob_drops = np.array(deltas)
 
@@ -211,13 +192,10 @@ class new_wrapper(gsenn_wrapper):
         if plot and not (save_path is None):
             save_path_or = save_path + 'original'
             if not os.path.isdir(save_path):
-                # print(save_path)
                 os.mkdir(save_path)
-            # if not os.path.isdir(save_path_or):
-            #     os.mkdir(save_path_or)
+
             save_path_alt = save_path + 'alternative'
-            # if not os.path.isdir(save_path_alt):
-            #     os.mkdir(save_path_alt)
+
             max_att = max(max(attributions_plot) , max(attributions_plot_alt))
             min_att = min(min(attributions_plot) , min(attributions_plot_alt))
             lim_prob_drop = max(max(prob_drops), -min(prob_drops))
@@ -228,22 +206,6 @@ class new_wrapper(gsenn_wrapper):
                 plot_prob_drop(attributions_plot_alt.squeeze(), prob_drops, save_path = save_path_alt, limits = limits)
 
         return prob_drops, attributions, attributions_plot_alt
-
-    # def compute_dependencies(self, x, reference_value = 0, plot = False, save_path = None, inputs_are_concepts = False):
-    #     if not inputs_are_concepts:
-    #             # x = x.type(torch.FloatTensor)
-    #             x = x.unsqueeze(dim = 0)
-    #             h_x = self.net.forward(x, h_options = -1)
-    #             # print("h_x: ",h_x)
-    #             f = self.net.forward(x, h_x = h_x, h_options = 1)
-    #         # Then, use concepts to forward pass through the model
-    #         # if inputs_are_concepts:
-    #     else:
-    #         x = h_x # model is compute_proba function, not neural model - we need to add output layer to compute probabilities. Not necessary for now TODO
-    #         f   = self.net.forward(x.reshape(1,-1))
-    #     thetas = self(x) # attributions are theta values (i think)
-    #     dependencies = thetas.squeeze() * h_x.cpu().detach().numpy().squeeze()
-    #     return dependencies, thetas
 
 
 def parse_args():
@@ -354,7 +316,7 @@ def main():
 
     model_path, log_path, results_path = generate_dir_names('mnist', args)
 
-    print("Model path out", model_path)
+    # print("Model path out", model_path)
 
     train_loader, valid_loader, test_loader, train_tds, test_tds = load_mnist_data(
                         batch_size=args.batch_size,num_workers=args.num_workers
@@ -404,17 +366,16 @@ def main():
         model = checkpoint['model']
         trainer =  VanillaClassTrainer(model, args)
 
-    trainer.validate(test_loader, fold = 'test')
 
     All_Results = {}
 
 
 
 
-    ### 1. Single point lipshiz estimate via black box optim
-    # All methods tested with BB optim for fair comparison)
+
     features = None
     classes = [str(i) for i in range(10)]
+
     model.eval()
     expl = new_wrapper(model,
                         mode      = 'classification',
@@ -427,7 +388,8 @@ def main():
                         verbose = False)
 
 
-    ## Faithfulness analysis
+    ## Faithfulness analysis. Generates faithfulness plots, dependency plots and correlation scores.
+
     correlations = np.array([])
     altcorrelations = np.array([])
     for i, (inputs, targets) in enumerate(tqdm(test_loader)):
@@ -458,36 +420,6 @@ def main():
             correlations = np.append(correlations, corrs)
             altcorrelations = np.append(altcorrelations, altcorrs)
 
-    ### Consistency analysis
-    correlations = np.array([])
-    altcorrelations = np.array([])
-    for i, (inputs, targets) in enumerate(tqdm(test_loader)):
-            # get the inputs
-            if args.demo:
-                if args.nconcepts == 5:
-                    if i != 0:
-                        continue
-                    else:
-                        args.demo = 27+1
-                elif args.nconcepts == 22:
-                    if i != 0:
-                        continue
-                    else:
-                        args.demo = 1+1
-            if args.cuda:
-                inputs, targets = inputs.cuda(), targets.cuda()
-            input_var = torch.autograd.Variable(inputs, volatile=True)
-            target_var = torch.autograd.Variable(targets)
-            if not args.noplot:
-                save_path = results_path + '/faithfulness' + str(i) + '/'
-                if not os.path.isdir(save_path):
-                    os.mkdir(save_path)
-            else:
-                save_path = None
-            corrs, altcorrs = expl.compute_dataset_consistency(input_var, targets = target_var, 
-            inputs_are_concepts = False, save_path = save_path, demo_mode = args.demo)
-            correlations = np.append(correlations, corrs)
-            altcorrelations = np.append(altcorrelations, altcorrs)
 
     average_correlation = np.sum(correlations)/len(correlations)
     std_correlation = np.std(correlations)
@@ -498,56 +430,66 @@ def main():
     print("Average alternative correlation:", average_alt_correlation)
     print("Standard deviation of alternative correlations: ", std_alt_correlation)
 
+    print("Generating Faithfulness correlation box plot..")
+
     box_plot_values = [correlations, altcorrelations]
 
     box = plt.boxplot(box_plot_values, patch_artist=True, labels=['theta(x)', 'theta(x) h(x)'])
     colors = ['blue', 'purple']
     for patch, color in zip(box['boxes'], colors):
         patch.set_facecolor(color)
-    print("Figure saved to: ", results_path)
     plt.savefig(results_path + '/faithfulness_box_plot.png', format = "png", dpi=300, verbose=True)
 
+    if not args.noplot:
 
-    # Make histograms
-    plot_distribution_h(test_loader, expl, 'thetaxhx', fig=0, results_path=results_path)
-    plot_distribution_h(test_loader, expl, 'thetax', fig=1, results_path=results_path)
-    plot_distribution_h(test_loader, expl, 'hx', fig=2, results_path=results_path)
+        print("Generating theta, h and theta*h distribution histograms...")
 
-    # Compute stabilites
-    noises = np.arange(0, 0.21, 0.02)
-    dist_dict, dist_dict_2 = {}, {}
-    for noise in noises:
-        distances = eval_stability_2(test_loader, expl, noise, False)
-        distances_2 = eval_stability_2(test_loader, expl, noise, True)
-        dist_dict[noise] = distances
-        dist_dict_2[noise] = distances_2
+        # Make histograms
+        plot_distribution_h(test_loader, expl, 'thetaxhx', fig=0, results_path=results_path)
+        plot_distribution_h(test_loader, expl, 'thetax', fig=1, results_path=results_path)
+        plot_distribution_h(test_loader, expl, 'hx', fig=2, results_path=results_path)
 
-    # Plot stability
-    distances, distances_2, noises = dist_dict, dist_dict_2, noises
-    means = [np.mean(distances[noise]) for noise in noises]
-    stds = [np.std(distances[noise]) for noise in noises]
+        print("Generating stability metrics...")
 
-    means_min = [means[i] - stds[i] for i in range(len(means))]
-    means_max = [means[i] + stds[i] for i in range(len(means))]
+        # Compute stabilites
+        noises = np.arange(0, 0.21, 0.02)
+        dist_dict, dist_dict_2 = {}, {}
+        for noise in noises:
+            distances = eval_stability_2(test_loader, expl, noise, False)
+            distances_2 = eval_stability_2(test_loader, expl, noise, True)
+            dist_dict[noise] = distances
+            dist_dict_2[noise] = distances_2
 
-    means_2 = [np.mean(distances_2[noise]) for noise in noises]
-    stds_2 = [np.std(distances_2[noise]) for noise in noises]
+        print("Generating stability plot...")
 
-    means_min_2 = [means_2[i] - stds_2[i] for i in range(len(means_2))]
-    means_max_2 = [means_2[i] + stds_2[i] for i in range(len(means_2))]
+        # Plot stability
+        distances, distances_2, noises = dist_dict, dist_dict_2, noises
+        means = [np.mean(distances[noise]) for noise in noises]
+        stds = [np.std(distances[noise]) for noise in noises]
 
-    fig, ax = plt.subplots(1)
+        means_min = [means[i] - stds[i] for i in range(len(means))]
+        means_max = [means[i] + stds[i] for i in range(len(means))]
 
-    ax.plot(noises, means, lw=2, label='theta(x)', color='blue')
-    ax.plot(noises, means_2, lw=2, label='theta(x)^T h(x)', color='purple')
-    ax.fill_between(noises, means_max, means_min, facecolor='blue', alpha=0.3)
-    ax.fill_between(noises, means_max_2, means_min_2, facecolor='purple', alpha=0.3)
-    ax.set_title('Stability')
-    ax.legend(loc='upper left')
-    ax.set_xlabel('Added noise')
-    ax.set_ylabel('Norm of relevance coefficients')
-    ax.grid()
-    fig.savefig(results_path + '/stablity' + '.png', format = "png", dpi=300)
+        means_2 = [np.mean(distances_2[noise]) for noise in noises]
+        stds_2 = [np.std(distances_2[noise]) for noise in noises]
+
+        means_min_2 = [means_2[i] - stds_2[i] for i in range(len(means_2))]
+        means_max_2 = [means_2[i] + stds_2[i] for i in range(len(means_2))]
+
+        fig, ax = plt.subplots(1)
+
+        ax.plot(noises, means, lw=2, label='theta(x)', color='blue')
+        ax.plot(noises, means_2, lw=2, label='theta(x)^T h(x)', color='purple')
+        ax.fill_between(noises, means_max, means_min, facecolor='blue', alpha=0.3)
+        ax.fill_between(noises, means_max_2, means_min_2, facecolor='purple', alpha=0.3)
+        ax.set_title('Stability')
+        ax.legend(loc='upper left')
+        ax.set_xlabel('Added noise')
+        ax.set_ylabel('Norm of relevance coefficients')
+        ax.grid()
+        fig.savefig(results_path + '/stablity' + '.png', format = "png", dpi=300)
+
+    print("Finished")
 
 if __name__ == '__main__':
     main()
