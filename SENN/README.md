@@ -4,7 +4,7 @@ This folder contains all code used to generate the results used in the paper "Re
 # Prerequisites
 1. Clone or download this repository to a local disk. It includes the MNIST and COMPAS datasets, so that will take a few minutes. 
 2. Create a new conda environment (from a terminal in this folder) with the following command:
-conda create -f SENN_environment.yml --name RSENN
+conda env create -f SENN_environment.yml --name RSENN
 
 
 # Notebook
